@@ -31,7 +31,7 @@ class Auth(object):
         '''
         if dict is None:
             return
-        self.auth_time = config.get('auth_time', 7200)
+        self.auth_time = timedelta(seconds=config.get('auth_time', 7200))
 
     @abstractmethod
     def can_auth(self) -> bool:
