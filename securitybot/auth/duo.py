@@ -1,33 +1,33 @@
 '''
 Authentication using Duo.
 '''
-__author__ = 'Alex Bertsch'
-__email__ = 'abertsch@dropbox.com'
+__author__ = 'Alex Bertsch, Antoine Cardon'
+__email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
 import logging
 from datetime import datetime
-from urllib import urlencode
-from securitybot.auth.auth import Auth, AUTH_STATES, AUTH_TIME
+from urllib.parse import urlencode
+from securitybot.auth.auth import Auth, AuthState
+from typing import Callable
 
-from typing import Any
 
 class DuoAuth(Auth):
-    def __init__(self, duo_api, username):
-        # type: (Any, str) -> None
+
+    def __init__(self, config: dict=None, duo_api: Callable=None) -> None:
         '''
         Args:
             duo_api (duo_client.Auth): An Auth API client from Duo.
             username (str): The username of the person authorized through
                             this object.
         '''
-        self.client = duo_api
-        self.username = username
-        self.txid = None # type: str
+        super().__init__()
+        self.client: Callable = duo_api
+        self.username: str = config.get('duo', {}).get('username', "")
+        self.txid: str = None
         self.auth_time = datetime.min
-        self.state = AUTH_STATES.NONE
+        self.state = AuthState.NONE
 
-    def can_auth(self):
-        # type: () -> bool
+    def can_auth(self) -> bool:
         # Use Duo preauth to look for a device with Push
         # TODO: This won't work for anyone who's set to auto-allow, but
         # I don't believe we have anyone like that...
@@ -39,8 +39,7 @@ class DuoAuth(Auth):
                     return True
         return False
 
-    def auth(self, reason=None):
-        # type: (str) -> None
+    def auth(self, reason: str=None) -> None:
         logging.debug('Sending Duo Push request for {}'.format(self.username))
         pushinfo = 'from=Securitybot'
         if reason:
@@ -56,29 +55,26 @@ class DuoAuth(Auth):
             pushinfo=pushinfo
         )
         self.txid = res['txid']
-        self.state = AUTH_STATES.PENDING
+        self.state = AuthState.PENDING
 
-    def _recently_authed(self):
-        # type: () -> bool
+    def _recently_authed(self) -> bool:
         return (datetime.now() - self.auth_time) < AUTH_TIME
 
-    def auth_status(self):
-        # type: () -> int
-        if self.state == AUTH_STATES.PENDING:
+    def auth_status(self) -> int:
+        if self.state == AuthState.PENDING:
             res = self.client.auth_status(self.txid)
             if not res['waiting']:
                 if res['success']:
-                    self.state = AUTH_STATES.AUTHORIZED
+                    self.state = AuthState.AUTHORIZED
                     self.auth_time = datetime.now()
                 else:
-                    self.state = AUTH_STATES.DENIED
+                    self.state = AuthState.DENIED
                     self.auth_time = datetime.min
-        elif self.state == AUTH_STATES.AUTHORIZED:
+        elif self.state == AuthState.AUTHORIZED:
             if not self._recently_authed():
-                self.state = AUTH_STATES.NONE
+                self.state = AuthState.NONE
         return self.state
 
-    def reset(self):
-        # type: () -> None
+    def reset(self) -> None:
         self.txid = None
-        self.state = AUTH_STATES.NONE
+        self.state = AuthState.NONE
