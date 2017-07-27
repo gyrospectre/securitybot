@@ -2,8 +2,8 @@
 The internals of securitybot. Defines a core class SecurityBot that manages
 most of the bot's behavior.
 '''
-__author__ = 'Alex Bertsch'
-__email__ = 'abertsch@dropbox.com'
+__author__ = 'Alex Bertsch, Antoine Cardon'
+__email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
 import logging
 from securitybot.user import User
@@ -11,16 +11,12 @@ import time
 from datetime import datetime, timedelta
 import pytz
 import shlex
-import yaml
-import string
-
+from re import sub
 import securitybot.commands as bot_commands
 from securitybot.blacklist.sql_blacklist import SQLBlacklist
-from securitybot.chat.chat import Chat
-from securitybot.tasker.tasker import Task, Tasker
-from securitybot.auth.auth import Auth
+from securitybot.config import config
 
-from typing import Any, Callable, Dict, List, Tuple
+# from typing import Any, Callable, Dict, List, Tuple
 
 TASK_POLL_TIME = timedelta(minutes=1)
 REPORTING_TIME = timedelta(hours=1)
@@ -34,6 +30,7 @@ DEFAULT_COMMAND = {
     'failure_msg': None,
 }
 
+
 def clean_input(text):
     # type: (unicode) -> str
     '''
@@ -43,32 +40,32 @@ def clean_input(text):
     # smart quote, as happens with auto-formatting.
     text = (text.replace(u'\u2018', '\'')
                 .replace(u'\u2019', '\'')
-                .replace(u'\u201c','"')
+                .replace(u'\u201c', '"')
                 .replace(u'\u201d', '"'))
     # Undo autoformatting of dashes
     text = (text.replace(u'\u2013', '--')
                 .replace(u'\u2014', '--'))
 
-    return text.encode('utf-8')
+    return text
 
-PUNCTUATION = '.,!?\'"`'
+PUNCTUATION = r'[.,!?\'"`]'
+
 
 def clean_command(command):
     # type: (str) -> str
     '''Cleans a command.'''
     command = command.lower()
-    # Force to str
-    command = command.encode('utf-8')
     # Remove punctuation people are likely to use and won't interfere with command names
-    command = command.translate(string.maketrans('', ''), PUNCTUATION)
+    command = sub(PUNCTUATION, '', command)
     return command
+
 
 class SecurityBot(object):
     '''
     It's always dangerous naming classes the same name as the project...
     '''
 
-    def __init__(self, chat, tasker, auth_builder, reporting_channel, config_path):
+    def __init__(self, chat, tasker, auth_builder, reporting_channel):
         # type: (Chat, Tasker, Callable[[str], Auth], str, str) -> None
         '''
         Args:
@@ -86,7 +83,8 @@ class SecurityBot(object):
         self._last_task_poll = datetime.min.replace(tzinfo=pytz.utc)
         self._last_report = datetime.min.replace(tzinfo=pytz.utc)
 
-        self._load_config(config_path)
+        self._load_commands()
+        self.messages = config['messages']
 
         self.chat = chat
         chat.connect()
@@ -95,72 +93,33 @@ class SecurityBot(object):
         self.blacklist = SQLBlacklist()
 
         # A dictionary to be populated with all members of the team
-        self.users = {} # type: Dict[str, User]
-        self.users_by_name = {} # type: Dict[str, User]
+        self.users = {}  # type: Dict[str, User]
+        self.users_by_name = {}  # type: Dict[str, User]
         self._populate_users()
 
         # Dictionary of users who have outstanding tasks
-        self.active_users = {} # type: Dict[str, User]
+        self.active_users = {}  # type: Dict[str, User]
 
         # Recover tasks
         self.recover_in_progress_tasks()
 
         logging.info('Done!')
 
-    # Initialization functions
-
-    def _load_config(self, config_path):
-        # type: (str) -> None
-        '''
-        Loads a configuration file for the bot.
-        '''
-        logging.info('Loading configuration.')
-        with open(config_path, 'r') as f:
-            config = yaml.safe_load(f)
-
-            # Required parameters
-            try:
-                self._load_messages(config['messages_path'])
-                self._load_commands(config['commands_path'])
-            except KeyError as e:
-                logging.error('Missing parameter: {0}'.format(e))
-                raise SecurityBotException('Configuration file missing parameters.')
-
-            # Optional parameters
-            self.icon_url = config.get('icon_url', 'https://placehold.it/256x256')
-
-    def _load_messages(self, messages_path):
-        # type: (str) -> None
-        '''
-        Loads messages from a YAML file.
-
-        Args:
-            messages_path (str): Path to messages file.
-        '''
-        self.messages = yaml.safe_load(open(messages_path))
-
-    def _load_commands(self, commands_path):
-        # type: (str) -> None
+    def _load_commands(self) -> None:
         '''
         Loads commands from a configuration file.
-
-        Args:
-            commands_path (str): Path to commands file.
         '''
-        with open(commands_path, 'r') as f:
-            commands = yaml.safe_load(f)
+        self.commands = {}  # type: Dict[str, Any]
+        for name, cmd in config['commands'].items():
+            new_cmd = DEFAULT_COMMAND.copy()
+            new_cmd.update(cmd)
 
-            self.commands = {} # type: Dict[str, Any]
-            for name, cmd in commands.items():
-                new_cmd = DEFAULT_COMMAND.copy()
-                new_cmd.update(cmd)
+            try:
+                new_cmd['fn'] = getattr(bot_commands, format(cmd['fn']))
+            except AttributeError as e:
+                raise SecurityBotException('Invalid function: {0}'.format(e))
 
-                try:
-                    new_cmd['fn'] = getattr(bot_commands, format(cmd['fn']))
-                except AttributeError as e:
-                    raise SecurityBotException('Invalid function: {0}'.format(e))
-
-                self.commands[name] = new_cmd
+            self.commands[name] = new_cmd
         logging.info('Loaded commands: {0}'.format(self.commands.keys()))
 
     # Bot functions
@@ -288,7 +247,6 @@ class SecurityBot(object):
 
             self._add_task(task)
 
-
     def handle_verifying_tasks(self):
         # type: () -> None
         '''
@@ -414,6 +372,7 @@ class SecurityBot(object):
             split = command.split()
 
         return (clean_command(split[0]), split[1:])
+
 
 class SecurityBotException(Exception):
     pass

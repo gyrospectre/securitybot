@@ -5,40 +5,42 @@ from securitybot.bot import SecurityBot
 from securitybot.chat.slack import Slack
 from securitybot.tasker.sql_tasker import SQLTasker
 from securitybot.auth.duo import DuoAuth
-from securitybot.sql import init_sql
+from securitybot.db.engine import DbEngine
 import duo_client
+from securitybot.config import config
 
-CONFIG = {}
-SLACK_KEY = 'slack_api_token'
-DUO_INTEGRATION = 'duo_integration_key'
-DUO_SECRET = 'duo_secret_key'
-DUO_ENDPOINT = 'duo_endpoint'
-REPORTING_CHANNEL = 'some_slack_channel_id'
-ICON_URL = 'https://dl.dropboxusercontent.com/s/t01pwfrqzbz3gzu/securitybot.png'
 
 def init():
     # Setup logging
+    config.load_config('config/bot.yaml')
     logging.basicConfig(level=logging.DEBUG,
                         format='[%(asctime)s %(levelname)s] %(message)s')
     logging.getLogger('requests').setLevel(logging.WARNING)
     logging.getLogger('usllib3').setLevel(logging.WARNING)
 
+
 def main():
     init()
-    init_sql()
+    # init_sql()
 
-    # Create components needed for Securitybot
+    # Create components needed for SecurityBot
     duo_api = duo_client.Auth(
-        ikey=DUO_INTEGRATION,
-        skey=DUO_SECRET,
-        host=DUO_ENDPOINT
+        ikey=config['duo']['ikey'],
+        skey=config['duo']['skey'],
+        host=config['duo']['endpoint']
     )
     duo_builder = lambda name: DuoAuth(duo_api, name)
+    try:
+        # Initialise DbEngine here
+        DbEngine(config['database'])
+    except KeyError:
+        logging.error('No database configuration')
+        raise
 
-    chat = Slack('securitybot', SLACK_KEY, ICON_URL)
+    chat = Slack(config['slack'])
     tasker = SQLTasker()
 
-    sb = SecurityBot(chat, tasker, duo_builder, REPORTING_CHANNEL, 'config/bot.yaml')
+    sb = SecurityBot(chat, tasker, duo_builder, config['slack']['reporting_channel'])
     sb.run()
 
 if __name__ == '__main__':

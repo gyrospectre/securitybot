@@ -4,17 +4,18 @@ their statuses once acted up. This file contains two abstract classes,
 Tasker and Task, which define a class to manage tasks and a task class
 respectively.
 '''
-__author__ = 'Alex Bertsch'
-__email__ = 'abertsch@dropbox.com'
+__author__ = 'Alex Bertsch, Antoine Cardon'
+__email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
 from abc import ABCMeta, abstractmethod
-from securitybot.util import enum
+from enum import Enum, unique
+from securitybot.db.engine import DbEngine
 
-class Tasker(object):
+
+class Tasker(object, metaclass=ABCMeta):
     '''
     A simple interface to retrieve tasks on which the bot should act upon.
     '''
-    __metaclass__ = ABCMeta
 
     @abstractmethod
     def get_new_tasks(self):
@@ -44,14 +45,19 @@ class Tasker(object):
         '''
         pass
 
-# Task status levels
-STATUS_LEVELS = enum('OPEN', 'INPROGRESS', 'VERIFICATION')
 
-class Task(object):
-    __metaclass__ = ABCMeta
+@unique
+class StatusLevel(Enum):
+    # Task status levels
+    OPEN = 0
+    INPROGRESS = 1
+    VERIFICATION = 2
+
+
+class Task(object, metaclass=ABCMeta):
 
     def __init__(self, title, username, reason, description, url, performed, comment,
-            authenticated, status):
+                 authenticated, status):
         # type: (str, str, str, str, str, bool, str, bool, int) -> None
         '''
         Creates a new Task for an alert that should go to `username` and is
@@ -79,6 +85,7 @@ class Task(object):
         self.comment = comment
         self.authenticated = authenticated
         self.status = status
+        self._db_engine = DbEngine()
 
     @abstractmethod
     def set_open(self):

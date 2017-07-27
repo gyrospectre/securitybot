@@ -1,4 +1,29 @@
----
-messages_path: config/messages.yaml
-commands_path: config/commands.yaml
-...
+includes:
+  messages_path: config/messages.yaml
+  commands_path: config/commands.yaml
+database:
+  type: sql
+  engine: SQLEngine
+  user: root
+  password: password
+  host: host.example.com
+  db: securitybot
+user: 
+  fetcher:
+    name: ldap
+    options:
+      username: 'user'
+      password: changeme
+      host: ldap.example.com
+duo:
+  ikey: 'IKEY'
+  skey: 'SKEY'
+  endpoint: 'XXXXXX.duosecurity.com'
+slack:
+  username: 'username'
+  token: 'TOKEN'
+  reporting_channel: 'ChannelID'
+  icon_url: ''
+debug:
+  level: 'debug'
+

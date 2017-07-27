@@ -2,19 +2,20 @@
 A small file for keeping track of ignored alerts in the database.
 '''
 import pytz
-from datetime import datetime, timedelta
-from securitybot.sql import SQLEngine
+from datetime import timedelta, datetime
+from securitybot.db.engine import DbEngine
 from typing import Dict
 
-def __update_ignored_list():
+
+def __update_ignored_list() -> None:
     # type: () -> None
     '''
     Prunes the ignored table of old ignored alerts.
     '''
-    SQLEngine.execute('''DELETE FROM ignored WHERE until <= NOW()''')
+    DbEngine().execute('''DELETE FROM ignored WHERE until <= NOW()''')
 
-def get_ignored(username):
-    # type: (str) -> Dict[str, str]
+
+def get_ignored(username: str) -> Dict[str, str]:
     '''
     Returns a dictionary of ignored alerts to reasons why
     the ignored are ignored.
@@ -25,11 +26,11 @@ def get_ignored(username):
         Dict[str, str]: A mapping of ignored alert titles to reasons
     '''
     __update_ignored_list()
-    rows = SQLEngine.execute('''SELECT title, reason FROM ignored WHERE ldap = %s''', (username,))
+    rows = DbEngine().execute('''SELECT title, reason FROM ignored WHERE ldap = %s''', (username,))
     return {row[0]: row[1] for row in rows}
 
-def ignore_task(username, title, reason, ttl):
-    # type: (str, str, str, timedelta) -> None
+
+def ignore_task(username: str, title: str, reason: str, ttl: timedelta) -> None:
     '''
     Adds a task with the given title to the ignore list for the given
     amount of time. Additionally adds an optional message to specify the
@@ -43,7 +44,7 @@ def ignore_task(username, title, reason, ttl):
     '''
     expiry_time = datetime.now(tz=pytz.utc) + ttl
     # NB: Non-standard MySQL specific query
-    SQLEngine.execute('''INSERT INTO ignored (ldap, title, reason, until)
+    DbEngine().execute('''INSERT INTO ignored (ldap, title, reason, until)
     VALUES (%s, %s, %s, %s)
     ON DUPLICATE KEY UPDATE reason=VALUES(reason), until=VALUES(until)
     ''', (username, title, reason, expiry_time.strftime('%Y-%m-%d %H:%M:%S')))

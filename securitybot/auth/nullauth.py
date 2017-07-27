@@ -4,7 +4,7 @@ Dummy authenticator which returns always True.
 __author__ = 'Antoine Cardon'
 __email__ = 'antoine.cardon@algolia.com'
 
-from securitybot.auth.auth import Auth
+from securitybot.auth.auth import Auth, AuthState
 
 
 class NullAuth(Auth):
@@ -20,7 +20,7 @@ class NullAuth(Auth):
 
     def _recently_authed(self) -> str:
         # type: () -> bool
-        return 'AUTHORIZED'
+        return AuthState.AUTHORIZED
 
     def auth_status(self) -> bool:
         return True

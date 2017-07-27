@@ -7,13 +7,13 @@ __email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 import logging
 from datetime import datetime
 from urllib.parse import urlencode
-from securitybot.auth.auth import Auth, AuthState
+from securitybot.auth.auth import Auth, AuthStates
 from typing import Callable
 
 
 class DuoAuth(Auth):
 
-    def __init__(self, config: dict=None, duo_api: Callable=None) -> None:
+    def __init__(self, duo_api: Callable=None, username="") -> None:
         '''
         Args:
             duo_api (duo_client.Auth): An Auth API client from Duo.
@@ -22,10 +22,10 @@ class DuoAuth(Auth):
         '''
         super().__init__()
         self.client: Callable = duo_api
-        self.username: str = config.get('duo', {}).get('username', "")
+        self.username: str = username
         self.txid: str = None
         self.auth_time = datetime.min
-        self.state = AuthState.NONE
+        self.state = AuthStates.NONE
 
     def can_auth(self) -> bool:
         # Use Duo preauth to look for a device with Push
@@ -55,26 +55,26 @@ class DuoAuth(Auth):
             pushinfo=pushinfo
         )
         self.txid = res['txid']
-        self.state = AuthState.PENDING
+        self.state = AuthStates.PENDING
 
     def _recently_authed(self) -> bool:
         return (datetime.now() - self.auth_time) < AUTH_TIME
 
     def auth_status(self) -> int:
-        if self.state == AuthState.PENDING:
+        if self.state == AuthStates.PENDING:
             res = self.client.auth_status(self.txid)
             if not res['waiting']:
                 if res['success']:
-                    self.state = AuthState.AUTHORIZED
+                    self.state = AuthStates.AUTHORIZED
                     self.auth_time = datetime.now()
                 else:
-                    self.state = AuthState.DENIED
+                    self.state = AuthStates.DENIED
                     self.auth_time = datetime.min
-        elif self.state == AuthState.AUTHORIZED:
+        elif self.state == AuthStates.AUTHORIZED:
             if not self._recently_authed():
-                self.state = AuthState.NONE
+                self.state = AuthStates.NONE
         return self.state
 
     def reset(self) -> None:
         self.txid = None
-        self.state = AuthState.NONE
+        self.state = AuthStates.NONE

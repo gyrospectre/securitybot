@@ -1,44 +1,42 @@
 '''
 A wrapper over the Slack API.
 '''
-__author__ = 'Alex Bertsch'
-__email__ = 'abertsch@dropbox.com'
+__author__ = 'Alex Bertsch, Antoine Cardon'
+__email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
 import logging
 from slackclient import SlackClient
-import json
-
 from securitybot.user import User
 from securitybot.chat.chat import Chat, ChatException
 
-from typing import Any, Dict, List
+from typing import Callable, Any, Dict, List
+
 
 class Slack(Chat):
     '''
     A wrapper around the Slack API designed for Securitybot.
     '''
-    def __init__(self, username, token, icon_url):
-        # type: (str, str, str) -> None
+
+    # username: str, token: str, icon_url: str=None) -> None:
+    def __init__(self, config: Dict=None) -> None:
         '''
         Constructs the Slack API object using the bot's username, a Slack
         token, and a URL to what the bot's profile pic should be.
         '''
-        self._username = username
-        self._icon_url = icon_url
+        self._username = config['username']
+        self._icon_url = config['icon_url']
 
-        self._slack = SlackClient(token)
+        self._slack = SlackClient(config['token'])
         self._validate()
 
-    def _validate(self):
-        # type: () -> None
+    def _validate(self) -> None:
         '''Validates Slack API connection.'''
         response = self._api_call('api.test')
         if not response['ok']:
             raise ChatException('Unable to connect to Slack API.')
         logging.info('Connection to Slack API successful!')
 
-    def _api_call(self, method, **kwargs):
-        # type: (str, **Any) -> Dict[str, Any]
+    def _api_call(self, method: Callable, **kwargs) -> Dict[str, Any]:
         '''
         Performs a _validated_ Slack API call. After performing a normal API
         call using SlackClient, validate that the call returned 'ok'. If not,
@@ -58,7 +56,7 @@ class Slack(Chat):
                 logging.error('Bad Slack API request on {}'.format(method))
         return response
 
-    def connect(self):
+    def connect(self) -> None:
         # type: () -> None
         '''Connects to the chat system.'''
         logging.info('Attempting to start Slack RTM session.')
@@ -67,8 +65,7 @@ class Slack(Chat):
         else:
             raise ChatException('Unable to start Slack RTM session')
 
-    def get_users(self):
-        # type: () -> List[Dict[str, Any]]
+    def get_users(self) -> List[Dict[str, Any]]:
         '''
         Returns a list of all users in the chat system.
 
@@ -86,8 +83,7 @@ class Slack(Chat):
         '''
         return self._api_call('users.list')['members']
 
-    def get_messages(self):
-        # type () -> List[Dict[str, Any]]
+    def get_messages(self) -> List[Dict[str, Any]]:
         '''
         Gets a list of all new messages received by the bot in direct
         messaging channels. That is, this function ignores all messages
@@ -103,21 +99,19 @@ class Slack(Chat):
         messages = [e for e in events if e['type'] == 'message']
         return [m for m in messages if 'user' in m and m['channel'].startswith('D')]
 
-    def send_message(self, channel, message):
-        # type: (Any, str) -> None
+    def send_message(self, channel: Any, message: str) -> None:
         '''
         Sends some message to a desired channel.
         As channels are possibly chat-system specific, this function has a horrible
         type signature.
         '''
         self._api_call('chat.postMessage', channel=channel,
-                                           text=message,
-                                           username=self._username,
-                                           as_user=False,
-                                           icon_url=self._icon_url)
+                       text=message,
+                       username=self._username,
+                       as_user=False,
+                       icon_url=self._icon_url)
 
-    def message_user(self, user, message):
-        # type: (User, str) -> None
+    def message_user(self, user: User, message: str=None):
         '''
         Sends some message to a desired user, using a User object and a string message.
         '''

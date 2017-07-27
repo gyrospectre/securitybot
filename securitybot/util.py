@@ -1,18 +1,14 @@
-__author__ = 'Alex Bertsch'
-__email__ = 'abertsch@dropbox.com'
+__author__ = 'Alex Bertsch, Antoine Cardon'
+__email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
 import pytz
 import binascii
 import os
 from datetime import datetime, timedelta
 from collections import namedtuple
+from securitybot.db.engine import DbEngine
+from securitybot.tasker.tasker import StatusLevel
 
-from securitybot.sql import SQLEngine
-
-# http://stackoverflow.com/questions/36932/how-can-i-represent-an-enum-in-python
-def enum(*sequential, **named):
-    enums = dict(zip(sequential, range(len(sequential))), **named)
-    return type('Enum', (), enums)
 
 def tuple_builder(answer=None, text=None):
     tup = namedtuple('Response', ['answer', 'text'])
@@ -23,6 +19,7 @@ def tuple_builder(answer=None, text=None):
 OPENING_HOUR = 10
 CLOSING_HOUR = 18
 LOCAL_TZ = pytz.timezone('America/Los_Angeles')
+
 
 def during_business_hours(time):
     '''
@@ -38,6 +35,7 @@ def during_business_hours(time):
         here = time.replace(tzinfo=pytz.utc).astimezone(LOCAL_TZ)
     return (OPENING_HOUR <= here.hour < CLOSING_HOUR and
             1 <= time.isoweekday() <= 5)
+
 
 def get_expiration_time(start, time):
     '''
@@ -69,6 +67,7 @@ def get_expiration_time(start, time):
         end = next_day + delta
     return end
 
+
 def create_new_alert(title, ldap, description, reason, url='N/A', key=None):
     # type: (str, str, str, str, str, str) -> None
     '''
@@ -77,19 +76,19 @@ def create_new_alert(title, ldap, description, reason, url='N/A', key=None):
     # Generate random key if none provided
     if key is None:
         key = binascii.hexlify(os.urandom(32))
-
+    db_engine = DbEngine()
     # Insert that into the database as a new alert
-    SQLEngine.execute('''
+    db_engine.execute('''
     INSERT INTO alerts (hash, ldap, title, description, reason, url, event_time)
     VALUES (UNHEX(%s), %s, %s, %s, %s, %s, NOW())
     ''',
-    (key, ldap, title, description, reason, url))
+                      (key, ldap, title, description, reason, url))
 
-    SQLEngine.execute('''
+    db_engine.execute('''
     INSERT INTO user_responses (hash, comment, performed, authenticated)
     VALUES (UNHEX(%s), '', false, false)
     ''',
-    (key,))
-
-    SQLEngine.execute('INSERT INTO alert_status (hash, status) VALUES (UNHEX(%s), 0)',
                       (key,))
+
+    db_engine.execute('INSERT INTO alert_status (hash, status) VALUES (UNHEX(%s), %s)',
+                      (key, StatusLevel.OPEN.value))

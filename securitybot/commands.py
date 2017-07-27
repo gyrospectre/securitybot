@@ -6,6 +6,9 @@ It also has `bot`, a reference to the bot that called it.
 They return True upon success and False upon failure, or just None
 if the command doesn't have success/failure messages.
 '''
+__author__ = 'Alex Bertsch, Antoine Cardon'
+__email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
+
 import re
 
 from datetime import timedelta
@@ -13,9 +16,11 @@ from datetime import timedelta
 import securitybot.ignored_alerts as ignored_alerts
 from securitybot.util import create_new_alert
 
+
 def hi(bot, user, args):
     '''Says hello to a user.'''
     bot.chat.message_user(user, bot.messages['hi'].format(user.get_name()))
+
 
 def help(bot, user, args):
     '''Prints help for each command.'''
@@ -29,6 +34,7 @@ def help(bot, user, args):
     msg += bot.messages['help_footer']
     bot.chat.message_user(user, msg)
 
+
 def add_to_blacklist(bot, user, args):
     '''Adds a user to the blacklist.'''
     name = user['name']
@@ -36,6 +42,7 @@ def add_to_blacklist(bot, user, args):
         bot.blacklist.add(name)
         return True
     return False
+
 
 def remove_from_blacklist(bot, user, args):
     '''Removes a user from the blacklist.'''
@@ -45,9 +52,11 @@ def remove_from_blacklist(bot, user, args):
         return True
     return False
 
+
 def positive_response(bot, user, args):
     '''Registers a postive response from a user.'''
     user.positive_response(' '.join(args))
+
 
 def negative_response(bot, user, args):
     '''Registers a negative response from a user.'''
@@ -56,6 +65,7 @@ def negative_response(bot, user, args):
 TIME_REGEX = re.compile(r'([0-9]+h)?([0-9]+m)?', flags=re.IGNORECASE)
 OUTATIME = timedelta()
 TIME_LIMIT = timedelta(hours=4)
+
 
 def ignore(bot, user, args):
     '''Ignores a specific alert for a user for some period of time.'''
@@ -92,8 +102,10 @@ def ignore(bot, user, args):
     ignored_alerts.ignore_task(user['name'], task.title, 'ignored', ignoretime)
     return True
 
+
 def test(bot, user, args):
     '''Creates a new test alert in Maniphest for a user.'''
-    create_new_alert('testing_alert', user['name'], 'Testing alert', 'Testing Securitybot')
+    create_new_alert('testing_alert', user['name'],
+                     'Testing alert', 'Testing Securitybot')
 
     return True

@@ -1,20 +1,23 @@
 '''
 A MySQL-based blacklist class.
 '''
-__author__ = 'Alex Bertsch'
-__email__ = 'abertsch@dropbox.com'
+__author__ = 'Alex Bertsch, Antoine Cardon'
+__email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
 from securitybot.blacklist.blacklist import Blacklist
-from securitybot.sql import SQLEngine
+from securitybot.db.engine import DbEngine
+
 
 class SQLBlacklist(Blacklist):
+
     def __init__(self):
         # type: () -> None
         '''
         Creates a new blacklist tied to a table named "blacklist".
         '''
         # Load from table
-        names = SQLEngine.execute('SELECT * FROM blacklist')
+        self._db_engine = DbEngine()
+        names = self._db_engine.execute('SELECT * FROM blacklist')
         # Break tuples into names
         self._blacklist = {name[0] for name in names}
 
@@ -37,7 +40,7 @@ class SQLBlacklist(Blacklist):
             name (str): The name to add to the blacklist.
         '''
         self._blacklist.add(name)
-        SQLEngine.execute('INSERT INTO blacklist (ldap) VALUES (%s)', (name,))
+        self._db_engine.execute('INSERT INTO blacklist (ldap) VALUES (%s)', (name,))
 
     def remove(self, name):
         # type: (str) -> None
@@ -48,4 +51,4 @@ class SQLBlacklist(Blacklist):
             name (str): The name to remove from the blacklist.
         '''
         self._blacklist.remove(name)
-        SQLEngine.execute('DELETE FROM blacklist WHERE ldap = %s', (name,))
+        self._db_engine.execute('DELETE FROM blacklist WHERE ldap = %s', (name,))

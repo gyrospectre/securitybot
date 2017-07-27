@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 import MySQLdb
-import sys
 
 # DB CONFIG GOES HERE
 host = 'localhost'
 user = 'root'
-passwd= ''
+passwd = 'password'
 
 db = MySQLdb.connect(host=host,
                      user=user,
@@ -15,19 +14,19 @@ db = MySQLdb.connect(host=host,
 cur = db.cursor()
 
 # Start fresh
-print 'Removing all tables'
+print('Removing all tables')
 cur.execute('SHOW TABLES')
 tables = cur.fetchall()
 for table in tables:
     table = table[0]
-    print 'Dropping {0}'.format(table)
-    cur.execute('DROP TABLE {0}'.format(MySQLdb.escape_string(table)))
+    print('Dropping {0}'.format(table))
+    cur.execute('DROP TABLE {0}'.format(table))
 
 # Create tables
-print 'Creating tables...'
+print('Creating tables...')
 
 cur.execute(
-'''
+    '''
 CREATE TABLE blacklist (
    ldap VARCHAR(255) NOT NULL,
    PRIMARY KEY ( ldap )
@@ -36,7 +35,7 @@ CREATE TABLE blacklist (
 )
 
 cur.execute(
-'''
+    '''
 CREATE TABLE ignored (
     ldap VARCHAR(255) NOT NULL,
     title VARCHAR(255) NOT NULL,
@@ -48,7 +47,7 @@ CREATE TABLE ignored (
 )
 
 cur.execute(
-'''
+    '''
 CREATE TABLE alerts (
     hash BINARY(32) NOT NULL,
     ldap VARCHAR(255) NOT NULL,
@@ -63,7 +62,7 @@ CREATE TABLE alerts (
 )
 
 cur.execute(
-'''
+    '''
 CREATE TABLE alert_status (
     hash BINARY(32) NOT NULL,
     status TINYINT UNSIGNED NOT NULL,
@@ -73,7 +72,7 @@ CREATE TABLE alert_status (
 )
 
 cur.execute(
-'''
+    '''
 CREATE TABLE user_responses(
     hash BINARY(32) NOT NULL,
     comment TEXT,
@@ -84,4 +83,4 @@ CREATE TABLE user_responses(
 '''
 )
 
-print 'Done!'
+print('Done!')

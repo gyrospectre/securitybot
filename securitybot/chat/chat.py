@@ -2,29 +2,26 @@
 A simple wrapper over an abstract chat/messaging system
 like Slack.
 '''
-__author__ = 'Alex Bertsch'
-__email__ = 'abertsch@dropbox.com'
+__author__ = 'Alex Bertsch, Antoine Cardon'
+__email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
 from securitybot.user import User
+from typing import List, Dict, Any
 from abc import ABCMeta, abstractmethod
 
-from typing import Any, Dict, List
 
-class Chat(object):
+class Chat(object, metaclass=ABCMeta):
     '''
     A wrapper over various chat frameworks, like Slack.
     '''
-    __metaclass__ = ABCMeta
 
     @abstractmethod
-    def connect(self):
-        # type: () -> None
+    def connect(self) -> None:
         '''Connects to the chat system.'''
         pass
 
     @abstractmethod
-    def get_users(self):
-        # type: () -> List[Dict[str, Any]]
+    def get_users(self) -> List[Dict[str, Any]]:
         '''
         Returns a list of all users in the chat system.
 
@@ -43,8 +40,7 @@ class Chat(object):
         pass
 
     @abstractmethod
-    def get_messages(self):
-        # type () -> List[Dict[str, Any]]
+    def get_messages(self) -> List[Dict[str, Any]]:
         '''
         Gets a list of all new messages received by the bot in direct
         messaging channels. That is, this function ignores all messages
@@ -59,8 +55,7 @@ class Chat(object):
         pass
 
     @abstractmethod
-    def send_message(self, channel, message):
-        # type: (Any, str) -> None
+    def send_message(self, channel: Any, message: str) -> None:
         '''
         Sends some message to a desired channel.
         As channels are possibly chat-system specific, this function has a horrible
@@ -69,12 +64,12 @@ class Chat(object):
         pass
 
     @abstractmethod
-    def message_user(self, user, message):
-        # type: (User, str) -> None
+    def message_user(self, user: User, message: str) -> None:
         '''
         Sends some message to a desired user, using a User object and a string message.
         '''
         pass
+
 
 class ChatException(Exception):
     pass

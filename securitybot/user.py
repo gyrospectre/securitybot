@@ -9,15 +9,13 @@ import logging
 import pytz
 from datetime import datetime, timedelta
 import securitybot.ignored_alerts as ignored_alerts
-from securitybot.tasker.tasker import Task
-from securitybot.auth.auth import AUTH_STATES
+from securitybot.auth.auth import AuthStates
 from securitybot.state_machine import StateMachine
 from securitybot.util import tuple_builder, get_expiration_time
 
-from typing import Any, Dict, List
-
-ESCALATION_TIME = timedelta(hours=2)
+ESCALATION_TIME = timedelta(minutes=2)
 BACKOFF_TIME = timedelta(hours=21)
+
 
 class User(object):
     '''
@@ -35,9 +33,9 @@ class User(object):
             auth (Auth): The authentication object to use.
             parent (Bot): The bot object that spawned this user.
         '''
-        self._user = user # type: Dict[str, Any]
-        self.tasks = [] # type: List[Task]
-        self.pending_task = None # type: Task
+        self._user = user  # type: Dict[str, Any]
+        self.tasks = []  # type: List[Task]
+        self.pending_task = None  # type: Task
         # Authetnication object specific to this user
         self.auth = auth
 
@@ -48,7 +46,7 @@ class User(object):
         self._last_message = tuple_builder()
 
         # Last authorization status
-        self._last_auth = AUTH_STATES.NONE
+        self._last_auth = AuthStates.NONE
 
         # Task auto-escalation time
         self._escalation_time = datetime.max.replace(tzinfo=pytz.utc)
@@ -178,7 +176,7 @@ class User(object):
         Checks if the user performed the last action and
         if they are already authorized.
         '''
-        return self._performed_action() and self.auth_status() == AUTH_STATES.AUTHORIZED
+        return self._performed_action() and self.auth_status() == AuthStates.AUTHORIZED
 
     def _cannot_2fa(self):
         # type: () -> bool
@@ -212,7 +210,7 @@ class User(object):
     def _auth_completed(self):
         # type: () -> bool
         '''Checks if authentication has been completed.'''
-        return self._last_auth is AUTH_STATES.AUTHORIZED or self._last_auth is AUTH_STATES.DENIED
+        return self._last_auth is AuthStates.AUTHORIZED or self._last_auth is AuthStates.DENIED
 
     # State actions
 
@@ -220,7 +218,7 @@ class User(object):
         # type: () -> None
         '''Marks the current task as needing verification and moves on.'''
         logging.info('Silently escalating {0} for {1}'
-                        .format(self.pending_task.description, self['name']))
+                     .format(self.pending_task.description, self['name']))
         # Append in the case that this is called when waiting for auth permission
         self.pending_task.comment += 'Automatically escalated. No response received.'
         self.pending_task.set_verifying()
@@ -251,7 +249,6 @@ class User(object):
                                                       comment=comment,
                                                       url=self.pending_task.url))
 
-
     # Exit actions
 
     def _update_task_response(self):
@@ -270,7 +267,7 @@ class User(object):
         '''
         Updates the task with authorization permission.
         '''
-        if self._last_auth is AUTH_STATES.AUTHORIZED:
+        if self._last_auth is AuthStates.AUTHORIZED:
             self.send_message('good_auth')
             self.pending_task.authenticated = True
         else:
@@ -414,6 +411,7 @@ class User(object):
                 self._user['profile']['first_name']):
             return self._user['profile']['first_name']
         return self._user['name']
+
 
 class UserException(Exception):
     pass

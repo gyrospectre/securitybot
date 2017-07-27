@@ -1,13 +1,13 @@
 '''
 A generic blacklist class.
 '''
-__author__ = 'Alex Bertsch'
-__email__ = 'abertsch@dropbox.com'
+__author__ = 'Alex Bertsch, Antoine Cardon'
+__email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
 from abc import ABCMeta, abstractmethod
 
-class Blacklist(object):
-    __metaclass__ = ABCMeta
+
+class Blacklist(object, metaclass=ABCMeta):
 
     @abstractmethod
     def is_present(self, name):
@@ -18,7 +18,7 @@ class Blacklist(object):
         Args:
             name (str): The name to check.
         '''
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def add(self, name):
@@ -29,7 +29,7 @@ class Blacklist(object):
         Args:
             name (str): The name to add to the blacklist.
         '''
-        pass
+        raise NotImplementedError()
 
     @abstractmethod
     def remove(self, name):
@@ -40,4 +40,4 @@ class Blacklist(object):
         Args:
             name (str): The name to remove from the blacklist.
         '''
-        pass
+        raise NotImplementedError()
