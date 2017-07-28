@@ -13,7 +13,7 @@ import pytz
 import shlex
 from re import sub
 import securitybot.commands as bot_commands
-from securitybot.blacklist.sql_blacklist import SQLBlacklist
+from securitybot.blacklist import Blacklist
 from securitybot.config import config
 
 # from typing import Any, Callable, Dict, List, Tuple
@@ -89,8 +89,8 @@ class SecurityBot(object):
         self.chat = chat
         chat.connect()
 
-        # Load blacklist from SQL
-        self.blacklist = SQLBlacklist()
+        # Load blacklist from DB
+        self.blacklist = Blacklist()
 
         # A dictionary to be populated with all members of the team
         self.users = {}  # type: Dict[str, User]
