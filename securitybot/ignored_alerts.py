@@ -4,6 +4,7 @@ A small file for keeping track of ignored alerts in the database.
 import pytz
 from datetime import timedelta, datetime
 from securitybot.db.engine import DbEngine
+from securitybot.config import config
 from typing import Dict
 
 
@@ -12,7 +13,8 @@ def __update_ignored_list() -> None:
     '''
     Prunes the ignored table of old ignored alerts.
     '''
-    DbEngine().execute('''DELETE FROM ignored WHERE until <= NOW()''')
+    if config['queries'].get('update_ignored_list', False):
+        DbEngine().execute(config['queries']['update_ignored_list'])
 
 
 def get_ignored(username: str) -> Dict[str, str]:
@@ -26,7 +28,7 @@ def get_ignored(username: str) -> Dict[str, str]:
         Dict[str, str]: A mapping of ignored alert titles to reasons
     '''
     __update_ignored_list()
-    rows = DbEngine().execute('''SELECT title, reason FROM ignored WHERE ldap = %s''', (username,))
+    rows = DbEngine().execute(config['queries']['get_ignored'], (username,))
     return {row[0]: row[1] for row in rows}
 
 
@@ -44,7 +46,5 @@ def ignore_task(username: str, title: str, reason: str, ttl: timedelta) -> None:
     '''
     expiry_time = datetime.now(tz=pytz.utc) + ttl
     # NB: Non-standard MySQL specific query
-    DbEngine().execute('''INSERT INTO ignored (ldap, title, reason, until)
-    VALUES (%s, %s, %s, %s)
-    ON DUPLICATE KEY UPDATE reason=VALUES(reason), until=VALUES(until)
-    ''', (username, title, reason, expiry_time.strftime('%Y-%m-%d %H:%M:%S')))
+    DbEngine().execute(config['queries']['ignore_task'],
+                       (username, title, reason, expiry_time.strftime('%Y-%m-%d %H:%M:%S')))
