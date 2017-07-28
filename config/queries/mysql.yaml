@@ -1,0 +1,61 @@
+---
+update_ignored_list: >
+    DELETE FROM ignored WHERE until <= NOW()
+
+get_ignored: >
+    SELECT title, reason FROM ignored WHERE ldap = %s
+
+ignore_task: >
+    INSERT INTO ignored (ldap, title, reason, until)
+    VALUES (%s, %s, %s, %s)
+    ON DUPLICATE KEY UPDATE reason=VALUES(reason), until=VALUES(until)
+
+blacklist_list: >
+    SELECT * FROM blacklist
+
+blacklist_add: >
+    INSERT INTO blacklist (ldap) VALUES (%s)
+
+blacklist_remove: >
+    DELETE FROM blacklist WHERE ldap = %s
+
+new_alert_status: >
+    INSERT INTO alert_status (hash, status) VALUES (UNHEX(%s), %s)
+
+new_alert_alerts: >
+    INSERT INTO alerts (hash, ldap, title, description, reason, url, event_time)
+    VALUES (UNHEX(%s), %s, %s, %s, %s, %s, NOW())
+
+new_alert_user_response: >
+    INSERT INTO user_responses (hash, comment, performed, authenticated)
+    VALUES (UNHEX(%s), '', false, false)
+
+get_alerts: >
+    SELECT HEX(alerts.hash),
+       title,
+       ldap,
+       reason,
+       description,
+       url,
+       performed,
+       comment,
+       authenticated,
+       status
+    FROM alerts
+    JOIN user_responses ON alerts.hash = user_responses.hash
+    JOIN alert_status ON alerts.hash = alert_status.hash
+    WHERE status = %s
+
+set_status: >
+    UPDATE alert_status
+    SET status=%s
+    WHERE hash=UNHEX(%s)
+
+set_response: >
+    UPDATE user_responses
+    SET comment=%s,
+        performed=%s,
+        authenticated=%s
+    WHERE hash=UNHEX(%s)
+
+...
