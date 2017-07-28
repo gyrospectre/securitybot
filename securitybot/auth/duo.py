@@ -7,9 +7,10 @@ __email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 import logging
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
+from typing import Callable
+
 from securitybot.auth.auth import Auth, AuthStates
 from securitybot.config import config
-from typing import Callable
 
 
 class DuoAuth(Auth):

@@ -6,8 +6,9 @@ __author__ = 'Antoine Cardon'
 __email__ = 'antoine.cardon@algolia.com'
 
 from typing import Any, List, Dict
-from securitybot.utils.class_helper import Singleton
 from abc import ABCMeta, abstractmethod
+
+from securitybot.utils.class_helper import Singleton
 
 engines = {}
 

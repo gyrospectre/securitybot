@@ -6,9 +6,9 @@ __email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
 import MySQLdb
 import logging
+from typing import Any, Dict, Sequence
 
 from securitybot.db.engine import EngineInterface, EngineException, register_engine
-from typing import Any, Dict, Sequence
 
 
 @register_engine

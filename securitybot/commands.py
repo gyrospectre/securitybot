@@ -10,7 +10,6 @@ __author__ = 'Alex Bertsch, Antoine Cardon'
 __email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
 import re
-
 from datetime import timedelta
 
 import securitybot.ignored_alerts as ignored_alerts

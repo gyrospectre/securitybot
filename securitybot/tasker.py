@@ -8,9 +8,10 @@ __author__ = 'Alex Bertsch, Antoine Cardon'
 __email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
 from enum import Enum, unique
+from typing import List
+
 from securitybot.db.engine import DbEngine
 from securitybot.config import config
-from typing import List
 
 
 @unique

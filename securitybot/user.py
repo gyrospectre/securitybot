@@ -8,6 +8,7 @@ __email__ = 'abertsch@dropbox.com'
 import logging
 import pytz
 from datetime import datetime, timedelta
+
 import securitybot.ignored_alerts as ignored_alerts
 from securitybot.auth.auth import AuthStates
 from securitybot.state_machine import StateMachine

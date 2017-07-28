@@ -4,6 +4,7 @@ __email__ = 'antoine.cardon@algolia.com'
 import yaml
 import logging
 from typing import Dict
+
 from securitybot.utils.class_helper import Singleton
 
 

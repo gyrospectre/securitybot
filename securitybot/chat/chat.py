@@ -5,9 +5,10 @@ like Slack.
 __author__ = 'Alex Bertsch, Antoine Cardon'
 __email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
-from securitybot.user import User
-from typing import List, Dict, Any
 from abc import ABCMeta, abstractmethod
+from typing import List, Dict, Any
+
+from securitybot.user import User
 
 
 class Chat(object, metaclass=ABCMeta):

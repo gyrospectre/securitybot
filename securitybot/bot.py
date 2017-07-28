@@ -6,13 +6,14 @@ __author__ = 'Alex Bertsch, Antoine Cardon'
 __email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
 import logging
-from securitybot.user import User
-import time
-from datetime import datetime, timedelta
 import pytz
 import shlex
+import time
+from datetime import datetime, timedelta
 from re import sub
+
 import securitybot.commands as bot_commands
+from securitybot.user import User
 from securitybot.blacklist import Blacklist
 from securitybot.config import config
 

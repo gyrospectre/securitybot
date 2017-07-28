@@ -6,6 +6,7 @@ import binascii
 import os
 from datetime import datetime, timedelta
 from collections import namedtuple
+
 from securitybot.db.engine import DbEngine
 from securitybot.config import config
 from securitybot.tasker import StatusLevel

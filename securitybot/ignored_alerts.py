@@ -3,9 +3,10 @@ A small file for keeping track of ignored alerts in the database.
 '''
 import pytz
 from datetime import timedelta, datetime
+from typing import Dict
+
 from securitybot.db.engine import DbEngine
 from securitybot.config import config
-from typing import Dict
 
 
 def __update_ignored_list() -> None:

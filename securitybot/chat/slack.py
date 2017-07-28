@@ -6,10 +6,10 @@ __email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
 import logging
 from slackclient import SlackClient
+from typing import Callable, Any, Dict, List
+
 from securitybot.user import User
 from securitybot.chat.chat import Chat, ChatException
-
-from typing import Callable, Any, Dict, List
 
 
 class Slack(Chat):
