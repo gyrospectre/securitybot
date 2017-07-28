@@ -7,43 +7,10 @@ respectively.
 __author__ = 'Alex Bertsch, Antoine Cardon'
 __email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
-from abc import ABCMeta, abstractmethod
 from enum import Enum, unique
 from securitybot.db.engine import DbEngine
-
-
-class Tasker(object, metaclass=ABCMeta):
-    '''
-    A simple interface to retrieve tasks on which the bot should act upon.
-    '''
-
-    @abstractmethod
-    def get_new_tasks(self):
-        # type: () -> List[Task]
-        '''
-        Returns a list of new Task objects that need to be acted upon, i.e.
-        the intial message needs to be sent out to the alertee.
-        '''
-        pass
-
-    @abstractmethod
-    def get_active_tasks(self):
-        # type: () -> List[Task]
-        '''
-        Returns a list of Task objects for which the alertees have been
-        contacted but have not replied. Periodically this list should be polled
-        and stale tasks should have their alertees pinged.
-        '''
-        pass
-
-    @abstractmethod
-    def get_pending_tasks(self):
-        # type: () -> List[Task]
-        '''
-        Retrieves a list of tasks for which the user has responded and it now
-        waiting for manual closure.
-        '''
-        pass
+from securitybot.config import config
+from typing import List
 
 
 @unique
@@ -54,9 +21,9 @@ class StatusLevel(Enum):
     VERIFICATION = 2
 
 
-class Task(object, metaclass=ABCMeta):
+class Task(object):
 
-    def __init__(self, title, username, reason, description, url, performed, comment,
+    def __init__(self, hsh, title, username, reason, description, url, performed, comment,
                  authenticated, status):
         # type: (str, str, str, str, str, bool, str, bool, int) -> None
         '''
@@ -86,30 +53,68 @@ class Task(object, metaclass=ABCMeta):
         self.authenticated = authenticated
         self.status = status
         self._db_engine = DbEngine()
+        self.hash = hsh
 
-    @abstractmethod
+    def _set_status(self, status):
+        # type: (int) -> None
+        '''
+        Sets the status of a task in the DB.
+
+        Args:
+            status (int): The new status to use.
+        '''
+        self._db_engine.execute(config['queries']['set_status'], (status, self.hash))
+
+    def _set_response(self):
+        # type: () -> None
+        '''
+        Updates the user response for this task.
+        '''
+        self._db_engine.execute(config['queries']['set_response'], (self.comment,
+                                                                    self.performed,
+                                                                    self.authenticated,
+                                                                    self.hash))
+
     def set_open(self):
-        # type: () -> None
-        '''
-        Sets this task to be open and performs any needed actions to ensure that
-        the corresponding tasker will be able to properly see it as such.
-        '''
-        pass
+        self._set_status(StatusLevel.OPEN.value)
 
-    @abstractmethod
     def set_in_progress(self):
-        # type: () -> None
-        '''
-        Sets this task to be in progress and performs any needed actions to
-        ensure the corresponding tasker will be able to see it as such.
-        '''
-        pass
+        self._set_status(StatusLevel.INPROGRESS.value)
 
-    @abstractmethod
     def set_verifying(self):
-        # type: () -> None
+        self._set_status(StatusLevel.VERIFICATION.value)
+        self._set_response()
+
+
+class Tasker(object):
+    '''
+    A simple class to retrieve tasks on which the bot should act upon.
+    '''
+
+    def __init__(self):
+        self._db_engine = DbEngine()
+
+    def _get_tasks(self, level) -> List[Task]:
+        # type: (int) -> List[Task]
         '''
-        Sets this task to be waiting for verification and performs and needed
-        actions to ensure that the corresponding tasker sees it as such.
+        Gets all tasks of a certain level.
+
+        Args:
+            level (int): One of StatusLevel
+        Returns:
+            List of SQLTasks.
         '''
-        pass
+        alerts = self._db_engine.execute(config['queries']['get_alerts'], (level,))
+        return [Task(*alert) for alert in alerts]
+
+    def get_new_tasks(self):
+        # type: () -> List[Task]
+        return self._get_tasks(StatusLevel.OPEN.value)
+
+    def get_active_tasks(self):
+        # type: () -> List[Task]
+        return self._get_tasks(StatusLevel.INPROGRESS.value)
+
+    def get_pending_tasks(self):
+        # type: () -> List[Task]
+        return self._get_tasks(StatusLevel.VERIFICATION.value)

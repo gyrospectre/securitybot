@@ -4,12 +4,23 @@ A generic blacklist class.
 __author__ = 'Alex Bertsch, Antoine Cardon'
 __email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
-from abc import ABCMeta, abstractmethod
+from securitybot.db.engine import DbEngine
+from securitybot.config import config
 
 
-class Blacklist(object, metaclass=ABCMeta):
+class Blacklist(object):
 
-    @abstractmethod
+    def __init__(self):
+        # type: () -> None
+        '''
+        Creates a new blacklist tied to a table named "blacklist".
+        '''
+        # Load from table
+        self._db_engine = DbEngine()
+        names = self._db_engine.execute(config['queries']['blacklist_list'])
+        # Break tuples into names
+        self._blacklist = {name[0] for name in names}
+
     def is_present(self, name):
         # type: (str) -> bool
         '''
@@ -18,9 +29,8 @@ class Blacklist(object, metaclass=ABCMeta):
         Args:
             name (str): The name to check.
         '''
-        raise NotImplementedError()
+        return name in self._blacklist
 
-    @abstractmethod
     def add(self, name):
         # type: (str) -> None
         '''
@@ -29,9 +39,9 @@ class Blacklist(object, metaclass=ABCMeta):
         Args:
             name (str): The name to add to the blacklist.
         '''
-        raise NotImplementedError()
+        self._blacklist.add(name)
+        self._db_engine.execute(config['queries']['blacklist_add'], (name,))
 
-    @abstractmethod
     def remove(self, name):
         # type: (str) -> None
         '''
@@ -40,4 +50,5 @@ class Blacklist(object, metaclass=ABCMeta):
         Args:
             name (str): The name to remove from the blacklist.
         '''
-        raise NotImplementedError()
+        self._blacklist.remove(name)
+        self._db_engine.execute(config['queries']['blacklist_remove'], (name,))
