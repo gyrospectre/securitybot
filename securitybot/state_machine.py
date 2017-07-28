@@ -8,7 +8,6 @@ __email__ = 'abertsch@dropbox.com'
 import logging
 from collections import defaultdict
 
-from typing import Callable
 
 class StateMachine(object):
     '''
@@ -81,18 +80,19 @@ class StateMachine(object):
             # Validate transition for correct states
             if transition['source'] not in self._states:
                 raise StateMachineException('Invalid source state: {0}'
-                    .format(transition['source']))
+                                            .format(transition['source']))
             if transition['dest'] not in self._states:
                 raise StateMachineException('Invalid destination state: {0}'
-                    .format(transition['dest']))
+                                            .format(transition['dest']))
 
             source_state = self._states[transition['source']]
             dest_state = self._states[transition['dest']]
             self._transitions[transition['source']].append(Transition(source_state,
-                                                               dest_state,
-                                                               transition.get('condition', None),
-                                                               transition.get('action', None)
-                                                               ))
+                                                                      dest_state,
+                                                                      transition.get(
+                                                                          'condition', None),
+                                                                      transition.get('action', None)
+                                                                      ))
 
     def step(self):
         # type: () -> None
@@ -114,12 +114,14 @@ class StateMachine(object):
                 self.state.on_enter()
                 break
 
+
 class State(object):
     '''
     A simple representation of a state in `StateMachine`.
     Each state has a function to perform while it's active, when it's entered
     into, and when it's exited. These functions may be None.
     '''
+
     def __init__(self, name, during, on_enter, on_exit):
         # type: (str, Callable[..., None], Callable[..., None], Callable[..., None]) -> None
         '''
@@ -162,6 +164,7 @@ class State(object):
         # type: () -> None
         if self._on_exit is not None:
             self._on_exit()
+
 
 class Transition(object):
     '''
@@ -206,6 +209,7 @@ class Transition(object):
         # type: () -> None
         if self._action is not None:
             self._action()
+
 
 class StateMachineException(Exception):
     pass
