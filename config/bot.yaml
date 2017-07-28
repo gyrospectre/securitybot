@@ -1,9 +1,12 @@
 includes:
   messages_path: config/messages.yaml
   commands_path: config/commands.yaml
+  queries:
+    mysql: config/queries/mysql.yaml
 database:
   type: sql
   engine: SQLEngine
+  queries: mysql
   user: root
   password: password
   host: host.example.com
@@ -19,11 +22,22 @@ duo:
   ikey: 'IKEY'
   skey: 'SKEY'
   endpoint: 'XXXXXX.duosecurity.com'
+  auth_time: 3600
 slack:
   username: 'username'
   token: 'TOKEN'
   reporting_channel: 'ChannelID'
   icon_url: ''
+bot:
+  timers:
+    task_poll_time: 60
+    reporting_time: 60
+  time:
+    opening_hour: 10
+    closing_hour: 18
+    local_tz: pytz.timezone('America/Los_Angeles')
+  sanitizing:
+    punctuation: "[.,!?\'\"`]"
 debug:
   level: 'debug'
 
