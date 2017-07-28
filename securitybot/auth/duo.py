@@ -5,7 +5,7 @@ __author__ = 'Alex Bertsch, Antoine Cardon'
 __email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import urlencode
 from securitybot.auth.auth import Auth, AuthStates
 from securitybot.config import config
