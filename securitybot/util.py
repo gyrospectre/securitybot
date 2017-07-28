@@ -7,7 +7,8 @@ import os
 from datetime import datetime, timedelta
 from collections import namedtuple
 from securitybot.db.engine import DbEngine
-from securitybot.tasker.tasker import StatusLevel
+from securitybot.config import config
+from securitybot.tasker import StatusLevel
 
 
 def tuple_builder(answer=None, text=None):
@@ -78,17 +79,9 @@ def create_new_alert(title, ldap, description, reason, url='N/A', key=None):
         key = binascii.hexlify(os.urandom(32))
     db_engine = DbEngine()
     # Insert that into the database as a new alert
-    db_engine.execute('''
-    INSERT INTO alerts (hash, ldap, title, description, reason, url, event_time)
-    VALUES (UNHEX(%s), %s, %s, %s, %s, %s, NOW())
-    ''',
+    db_engine.execute(config['queries']['new_alert_alerts'],
                       (key, ldap, title, description, reason, url))
 
-    db_engine.execute('''
-    INSERT INTO user_responses (hash, comment, performed, authenticated)
-    VALUES (UNHEX(%s), '', false, false)
-    ''',
-                      (key,))
+    db_engine.execute(config['queries']['new_alert_user_response'], (key,))
 
-    db_engine.execute('INSERT INTO alert_status (hash, status) VALUES (UNHEX(%s), %s)',
-                      (key, StatusLevel.OPEN.value))
+    db_engine.execute(config['queries']['new_alert'], (key, StatusLevel.OPEN.value))
