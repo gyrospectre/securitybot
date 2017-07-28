@@ -36,8 +36,6 @@ bot:
     opening_hour: 10
     closing_hour: 18
     local_tz: pytz.timezone('America/Los_Angeles')
-  sanitizing:
-    punctuation: "[.,!?\'\"`]"
 debug:
   level: 'debug'
 
