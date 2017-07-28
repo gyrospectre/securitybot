@@ -8,6 +8,7 @@ import logging
 from datetime import datetime
 from urllib.parse import urlencode
 from securitybot.auth.auth import Auth, AuthStates
+from securitybot.config import config
 from typing import Callable
 
 
@@ -58,7 +59,7 @@ class DuoAuth(Auth):
         self.state = AuthStates.PENDING
 
     def _recently_authed(self) -> bool:
-        return (datetime.now() - self.auth_time) < AUTH_TIME
+        return (datetime.now() - self.auth_time) < timedelta(seconds=config['duo']['auth_time'])
 
     def auth_status(self) -> int:
         if self.state == AuthStates.PENDING:
