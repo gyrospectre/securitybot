@@ -10,39 +10,30 @@ import logging
 
 from datetime import datetime
 
-from securitybot.auth.auth import Auth, AuthStates
+from securitybot.auth.auth import BaseAuthClient, AuthStates
 
-from securitybot.config import config
-
-from typing import Callable
-
-from okta import FactorsClient
+from okta import UsersClient, FactorsClient
 
 
-class OktaAuth(Auth):
-    def __init__(self, okta_client: Callable=None, username="") -> None:
+class AuthClient(BaseAuthClient):
+
+    def __init__(self, connection_config, username="") -> None:
         '''
         Args:
-            okta_client (okta.UsersClient.UsersClient): The Client Object connected to Okta
+            connection_config (Dict): Parameters required to connect to the Okta API
             username (str): The username of the person authorized through
                             this object.
         '''
         super().__init__()
-        self.usersclient: Callable = okta_client
+        self.usersclient = UsersClient(**connection_config)
+        self.factorsclient = FactorsClient(**connection_config)
         self.username: str = username
         self.username = "hardcoded" # Testing against Okta user that doesn't match Slack
         self.auth_time = datetime.min
-        self.reauth_time = config['auth']['reauth_time']
         self.state = AuthStates.NONE
         self.okta_user_id = None
         self.okta_push_factor_id = None
         self.poll_url = None
-
-        self.factorsclient = FactorsClient(
-            base_url='https://{}'.format(config['okta']['endpoint']),
-            api_token=config['okta']['token']
-        )
-
         self.state = AuthStates.NONE
 
     def _get_okta_userid(self, username):

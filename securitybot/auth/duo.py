@@ -9,21 +9,23 @@ from datetime import datetime, timedelta
 from urllib.parse import urlencode
 from typing import Callable
 
-from securitybot.auth.auth import Auth, AuthStates
+from securitybot.auth.auth import BaseAuthCient, AuthStates
 from securitybot.config import config
 
+import duo_client
 
-class DuoAuth(Auth):
 
-    def __init__(self, duo_api: Callable=None, username="") -> None:
+class AuthClient(BaseAuthCient):
+
+    def __init__(self, connection_config, username="") -> None:
         '''
         Args:
-            duo_api (duo_client.Auth): An Auth API client from Duo.
+            connection_config (Dict): Parameters required to connect to the Duo API
             username (str): The username of the person authorized through
                             this object.
         '''
         super().__init__()
-        self.client: Callable = duo_api
+        self.client = duo_client.Auth(**connection_config)
         self.username: str = username
         self.txid: str = None
         self.auth_time = datetime.min

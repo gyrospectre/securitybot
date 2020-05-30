@@ -9,24 +9,27 @@ from slackclient import SlackClient
 from typing import Callable, Any, Dict, List
 
 from securitybot.user import User
-from securitybot.chat.chat import Chat, ChatException
 
+from securitybot.chat.chat import BaseChatClient, ChatException
 
-class Slack(Chat):
+class ChatClient(BaseChatClient):
     '''
     A wrapper around the Slack API designed for Securitybot.
     '''
 
     # username: str, token: str, icon_url: str=None) -> None:
-    def __init__(self, config: Dict=None) -> None:
+    def __init__(self, connection_config) -> None:
         '''
         Constructs the Slack API object using the bot's username, a Slack
         token, and a URL to what the bot's profile pic should be.
         '''
-        self._username = config['username']
-        self._icon_url = config['icon_url']
+        self._username = connection_config['username']
+        self._icon_url = connection_config['icon_url']
+        self.reporting_channel = connection_config['reporting_channel']
+        print(self.reporting_channel)
+        self._slack = SlackClient(connection_config['token'])
+        self.connect()
 
-        self._slack = SlackClient(config['token'])
         self._validate()
 
     def _validate(self) -> None:

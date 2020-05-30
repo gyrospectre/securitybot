@@ -8,6 +8,7 @@ from datetime import timedelta
 from abc import ABCMeta, abstractmethod
 from enum import Enum, unique
 
+from securitybot.config import config
 
 @unique
 class AuthStates(Enum):
@@ -17,20 +18,19 @@ class AuthStates(Enum):
     DENIED = 4
 
 
-class Auth(object, metaclass=ABCMeta):
+class BaseAuthClient(object, metaclass=ABCMeta):
     '''
     When designing Auth subclasses, try to make sure that the authorization
     attempt is as non-blocking as possible.
     '''
 
     @abstractmethod
-    def __init__(self, config: dict=None, **kwargs):
+    def __init__(self, **kwargs):
         '''
         Initialise default values for global config
         '''
-        if config is None:
-            return
-        self.auth_time = timedelta(seconds=config.get('auth_time', 7200))
+        self.reauth_time = config['auth']['reauth_time']
+        self.auth_time = timedelta(seconds=self.reauth_time)
 
     @abstractmethod
     def can_auth(self) -> bool:

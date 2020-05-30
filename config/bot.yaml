@@ -21,24 +21,23 @@ user:
 auth:
   provider: okta
   reauth_time: 3600
+chat:
+  provider: slack
 duo:
-  package: DuoAuth
   ikey: 'IKEY'
   skey: 'SKEY'
   endpoint: 'XXXXXX.duosecurity.com'
 okta:
-  package: OktaAuth
-  token: ''
-  endpoint: 'INSTANCE.okta.com'
+  api_token: ''
+  base_url: ''
 slack:
   username: 'CyberBot'
-  token: 'TOKEN'
-  reporting_channel: 'CHANNEL'
+  token: ''
+  reporting_channel: ''
   icon_url: 'https://dl.dropboxusercontent.com/s/t01pwfrqzbz3gzu/securitybot.png'
 bot:
   timers:
     task_poll_time: 60
-    reporting_time: 60
   time:
     opening_hour: 10
     closing_hour: 18

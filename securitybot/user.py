@@ -30,13 +30,13 @@ class User(object):
         '''
         Args:
             user (dict): Chat information about a user.
-            auth (Auth): The authentication object to use.
+            auth (AuthClient): The authentication client to use.
             parent (Bot): The bot object that spawned this user.
         '''
         self._user = user
         self.tasks = []
         self.pending_task = None
-        # Authetnication object specific to this user
+        # Authentication object specific to this user
         self.auth = auth
 
         # Parent pointer to bot
@@ -233,7 +233,7 @@ class User(object):
         # Send escalation method
         self.send_message('escalated')
         # Alert bot's reporting channel
-        if self.parent.reporting_channel is not None:
+        if self.parent.chat.reporting_channel is not None:
             # Format message
             if self._last_message.text:
                 comment = self._last_message.text
@@ -241,7 +241,7 @@ class User(object):
                 comment = 'No comment provided.'
             comment = '\n'.join('> ' + s for s in comment.split('\n'))
             self.parent.chat.send_message(
-                self.parent.reporting_channel,
+                self.parent.chat.reporting_channel,
                 self.parent.messages['report'].format(username=self['name'],
                                                       title=self.pending_task.title,
                                                       description=self.pending_task.description,

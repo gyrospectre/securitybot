@@ -11,7 +11,7 @@ from typing import List, Dict, Any
 from securitybot.user import User
 
 
-class Chat(object, metaclass=ABCMeta):
+class BaseChatClient(object, metaclass=ABCMeta):
     '''
     A wrapper over various chat frameworks, like Slack.
     '''
