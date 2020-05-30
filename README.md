@@ -136,7 +136,7 @@ limitations under the License.
 
 [slack-blog]: https://slack.engineering/distributed-security-alerting-c89414c992d6 "Distributed Alerting"
 [bot-user]: https://api.slack.com/authentication/basics "Slack Bot Users"
-[create-classic-app] https://api.slack.com/apps?new_classic_app=1 "this link"
+[create-classic-app]: https://api.slack.com/apps?new_classic_app=1 "this link"
 [auth-api]: https://duo.com/docs/authapi "Duo Auth API"
 [cla]: https://opensource.dropbox.com/cla/ "Dropbox CLA"
 [algolia]: https://github.com/algolia/securitybot "algolia"
