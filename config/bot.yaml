@@ -9,7 +9,7 @@ database:
   queries: mysql
   user: root
   password: password
-  host: host.example.com
+  host: 127.0.0.1
   db: securitybot
 user: 
   fetcher:
@@ -24,10 +24,10 @@ duo:
   endpoint: 'XXXXXX.duosecurity.com'
   auth_time: 3600
 slack:
-  username: 'username'
+  username: 'CyberBot'
   token: 'TOKEN'
-  reporting_channel: 'ChannelID'
-  icon_url: ''
+  reporting_channel: 'CHANNEL'
+  icon_url: 'https://dl.dropboxusercontent.com/s/t01pwfrqzbz3gzu/securitybot.png'
 bot:
   timers:
     task_poll_time: 60

@@ -27,16 +27,15 @@ class User(object):
     '''
 
     def __init__(self, user, auth, parent):
-        # type: (Dict[str, Any], Any, Any) -> None
         '''
         Args:
             user (dict): Chat information about a user.
             auth (Auth): The authentication object to use.
             parent (Bot): The bot object that spawned this user.
         '''
-        self._user = user  # type: Dict[str, Any]
-        self.tasks = []  # type: List[Task]
-        self.pending_task = None  # type: Task
+        self._user = user
+        self.tasks = []
+        self.pending_task = None
         # Authetnication object specific to this user
         self.auth = auth
 
@@ -150,7 +149,6 @@ class User(object):
                                  on_exit=on_exit)
 
     def __getitem__(self, key):
-        # type: (str) -> Any
         '''
         Allows for indexing on the user infomation pulled from our chat system.
         '''
@@ -283,7 +281,6 @@ class User(object):
     # Task methods
 
     def add_task(self, task):
-        # type: (Task) -> None
         '''
         Adds a task to this user's new tasks.
 

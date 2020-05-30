@@ -123,7 +123,6 @@ class State(object):
     '''
 
     def __init__(self, name, during, on_enter, on_exit):
-        # type: (str, Callable[..., None], Callable[..., None], Callable[..., None]) -> None
         '''
         Args:
             name (str): The name of this state.
@@ -175,7 +174,6 @@ class Transition(object):
     '''
 
     def __init__(self, source, dest, condition, action):
-        # type: (State, State, Callable[..., bool], Callable[..., None]) -> None
         '''
         Args:
             source (State): The source State for this transition.

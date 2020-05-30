@@ -17,8 +17,6 @@ def init():
                         format='[%(asctime)s %(levelname)s] %(message)s')
     logging.getLogger('requests').setLevel(logging.WARNING)
     logging.getLogger('usllib3').setLevel(logging.WARNING)
-    import pdb
-    pdb.set_trace()
     if len(argv) > 1 and argv[1] != "":
         config.load_config(argv[1])
     else:

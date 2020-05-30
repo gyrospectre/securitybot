@@ -1,34 +1,56 @@
 # Securitybot
 ### Distributed alerting for the masses!
+A fork of the famous [db-orig], which is no longer maintained and getting a bit long in the tooth! It's been given a fresh coat of paint,
+via [algolia] who did some great work a few years ago with Python3 conversion and some extra cleanup.
+
 Securitybot is an open-source implementation of a distributed alerting chat bot, as described in Ryan Huber's [blog post][slack-blog].
 Distributed alerting improves the monitoring efficiency of your security team and can help you catch security incidents faster and more efficiently.
-We've tried to remove all Dropbox-isms from this code so that setting up your own instance should be fairly painless.
-It should be relatively easy to install the listed requirements in a virtualenv/Docker container and simply have the bot do its thing.
-We also provide a simple front end to dive through the database, receive API calls, and create custom alerts for the bot to reach out to people as desired.
+
+The ultimate goal is a seamless install running in AWS in a Lambda, with all creds in Secrets Manager, and using Slack Event subscription
+rather than the old RTM API, but right now it's just a working codebase with some Vagrant lovliness to get a dev environment up and running easily.
 
 ## Deploying
 This guide runs through setting up a Securitybot instance as quickly as possible with no frills.
-We'll be connecting it to Slack, SQL, and Duo.
-Once we're done, we'll have a file that looks something like `main.py`.
+
+## Quick Start
+Install vagrant and virtualbox on your dev machine. Then, deploy the code into a VM:
+`git clone https://github.com/gyrospectre/securitybot.git` 
+`cd securitybot`
+`vagrant up`
+Vagrant will spin up an Ubuntu VM, install and configure MySQL, and install python deps. Populate `config/bot.yaml` with your
+Slack token and reporting_channel (see Slack section below) at a minimum, and then run your bot!
+`vagrant ssh`
+`cd /vagrant`
+`python3 main.py`
+When done, you can ditch your vagrant dev box.
+`vagrant destroy`
 
 ### SQL
-You'll need a database called `securitybot` on some MySQL server somewhere.
-We've provided a function called `init_sql` located in `securitybot/sql.py` that will initialize SQL.
-Currently it's set up to use the host `localhost` with user `root` and no password.
-You'll need to change this because of course that's not how your database is set up.
+Ew. Ewww. Keeping SQL for the time being but this will go soon. Please, please do not deploy this to prod as is. It uses the root user, 
+has a stupid password, and creds are cleartext in config files.
 
 ### Slack
 You'll need a token to be able to integrate with Slack.
-The best thing to do would be to [create a bot user][bot-user] and use that token for Securitybot.
+The best thing to do would be to [create a new Slack app][bot-user] and use that token for Securitybot. You'll need a "Classic App" for the time
+being until I can update the bot to not use the RTM API, so use [create-classic-app] to create your app. Give the app a name, like `Security Bot`
+and point it at your Slack workspace. Under "App Home" add a legacy bot user, giving your bot a name, like "CyberBot".
+Then, under the "OAuth and Permissions" menu, add some a Bot Token Scopes to give your bot some permissions. This is not quite least privilege, but
+better than nothing for the time being. Add the following scope:
+- bot
+Then, head to the top of the page and install your app to your workspace. Verify the perms look good, and then hit "Allow". Almost done!
+You'll now have a "Bot User OAuth Access Token" that you can configure in `config/bot.yaml` under `token` in the Slack section. 
 You'll also want to set up a channel to which the bot will report when users specify that they haven't performed an action.
-Find the unique ID for that channel (it'll look similar to `C123456`) and be sure to invite the bot user into that channel, otherwise it won't be able to send messages.
+Find the unique ID for that channel (it'll look similar to `C123456`), and pop that in `config/bot.yaml` too, as the `reporting_channel` key.
 
 ### Duo
 For Duo, you'll want to create an [Auth API][auth-api] instances, name it something clever, and keep track of the integration key, secret key, and auth API endpoint URI.
+I don't use Duo, so have not tested this.
 
+### Okta
+Okta support in progress, building on [mew1033]'s initial work.
+ 
 ### Running the bot
 Take a look at the provided `main.py` in the root directory for an example on how to use all of these.
-Replace all of the global variables with whatever you found above.
 If the following were all generated successfully, Securitybot should be up and running.
 To test it, message the bot user it's assigned to and say `hi`.
 To test the process of dealing with an alert, message `test` to test the bot.
@@ -106,6 +128,10 @@ limitations under the License.
 
 
 [slack-blog]: https://slack.engineering/distributed-security-alerting-c89414c992d6 "Distributed Alerting"
-[bot-user]: https://api.slack.com/bot-users "Slack Bot Users"
+[bot-user]: https://api.slack.com/authentication/basics "Slack Bot Users"
+[create-classic-app] https://api.slack.com/apps?new_classic_app=1 "this link"
 [auth-api]: https://duo.com/docs/authapi "Duo Auth API"
 [cla]: https://opensource.dropbox.com/cla/ "Dropbox CLA"
+[algolia]: https://github.com/algolia/securitybot "algolia"
+[db-orig]: https://github.com/dropbox/securitybot "Dropbox Security Bot" 
+[mew1033]: https://github.com/mew1033/securitybot "mew1033"

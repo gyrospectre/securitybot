@@ -85,4 +85,4 @@ def create_new_alert(title, ldap, description, reason, url='N/A', key=None):
 
     db_engine.execute(config['queries']['new_alert_user_response'], (key,))
 
-    db_engine.execute(config['queries']['new_alert'], (key, StatusLevel.OPEN.value))
+    db_engine.execute(config['queries']['new_alert_status'], (key, StatusLevel.OPEN.value))

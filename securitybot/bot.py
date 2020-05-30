@@ -33,7 +33,6 @@ DEFAULT_COMMAND = {
 
 
 def clean_input(text):
-    # type: (unicode) -> str
     '''
     Cleans some input text, doing things such as removing smart quotes.
     '''
@@ -67,7 +66,6 @@ class SecurityBot(object):
     '''
 
     def __init__(self, chat, tasker, auth_builder, reporting_channel):
-        # type: (Chat, Tasker, Callable[[str], Auth], str, str) -> None
         '''
         Args:
             chat (Chat): The chat object to use for messaging.
@@ -94,12 +92,12 @@ class SecurityBot(object):
         self.blacklist = Blacklist()
 
         # A dictionary to be populated with all members of the team
-        self.users = {}  # type: Dict[str, User]
-        self.users_by_name = {}  # type: Dict[str, User]
+        self.users = {}
+        self.users_by_name = {}
         self._populate_users()
 
         # Dictionary of users who have outstanding tasks
-        self.active_users = {}  # type: Dict[str, User]
+        self.active_users = {}
 
         # Recover tasks
         self.recover_in_progress_tasks()
@@ -110,7 +108,7 @@ class SecurityBot(object):
         '''
         Loads commands from a configuration file.
         '''
-        self.commands = {}  # type: Dict[str, Any]
+        self.commands = {}
         for name, cmd in config['commands'].items():
             new_cmd = DEFAULT_COMMAND.copy()
             new_cmd.update(cmd)
@@ -190,7 +188,6 @@ class SecurityBot(object):
             return False
 
     def _add_task(self, task):
-        # type: (Task) -> None
         '''
         Adds a new task to the user specified by that task.
 
@@ -260,7 +257,7 @@ class SecurityBot(object):
         '''
         Handles all users.
         '''
-        for user_id in self.active_users.keys():
+        for user_id in self.active_users.copy().keys():
             user = self.active_users[user_id]
             user.step()
 
@@ -274,7 +271,6 @@ class SecurityBot(object):
         self.active_users.pop(user['id'], None)
 
     def alert_user(self, user, task):
-        # type: (User, Task) -> None
         '''
         Alerts a user about an alert that was trigged and associated with their
         name.
@@ -354,7 +350,6 @@ class SecurityBot(object):
         return clean_command(command.split()[0]) in self.commands
 
     def parse_command(self, command):
-        # type: (str) -> Tuple[str, List[str]]
         '''
         Parses a given command.
 

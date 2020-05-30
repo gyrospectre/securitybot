@@ -3,7 +3,6 @@ from mock import Mock, patch
 
 from collections import defaultdict
 from datetime import timedelta
-from time import sleep
 
 import securitybot.user as user
 import securitybot.bot
