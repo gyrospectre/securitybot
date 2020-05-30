@@ -1,7 +1,7 @@
 # Securitybot
 ### Distributed alerting for the masses!
-A fork of the famous [db-orig], which is no longer maintained and getting a bit long in the tooth! It's been given a fresh coat of paint,
-via [algolia] who did some great work a few years ago with Python3 conversion and some extra cleanup.
+A fork of the famous [Dropbox Security Bot][db-orig], which is no longer maintained and getting a bit long in the tooth! It's been given a fresh coat of paint,
+via [Antoine Cardon][algolia] who did some great work a few years ago with Python3 conversion and some extra cleanup.
 
 Securitybot is an open-source implementation of a distributed alerting chat bot, as described in Ryan Huber's [blog post][slack-blog].
 Distributed alerting improves the monitoring efficiency of your security team and can help you catch security incidents faster and more efficiently.
@@ -14,16 +14,21 @@ This guide runs through setting up a Securitybot instance as quickly as possible
 
 ## Quick Start
 Install vagrant and virtualbox on your dev machine. Then, deploy the code into a VM:
+
 `git clone https://github.com/gyrospectre/securitybot.git` 
 `cd securitybot`
 `vagrant up`
 Vagrant will spin up an Ubuntu VM, install and configure MySQL, and install python deps. Populate `config/bot.yaml` with your
 Slack token and reporting_channel (see Slack section below) at a minimum, and then run your bot!
-`vagrant ssh`
-`cd /vagrant`
-`python3 main.py`
+```
+vagrant ssh
+cd /vagrant
+python3 main.py
+```
 When done, you can ditch your vagrant dev box.
-`vagrant destroy`
+```
+vagrant destroy
+```
 
 ### SQL
 Ew. Ewww. Keeping SQL for the time being but this will go soon. Please, please do not deploy this to prod as is. It uses the root user, 
@@ -32,11 +37,13 @@ has a stupid password, and creds are cleartext in config files.
 ### Slack
 You'll need a token to be able to integrate with Slack.
 The best thing to do would be to [create a new Slack app][bot-user] and use that token for Securitybot. You'll need a "Classic App" for the time
-being until I can update the bot to not use the RTM API, so use [create-classic-app] to create your app. Give the app a name, like `Security Bot`
+being until I can update the bot to not use the RTM API, so use [this link][create-classic-app] to create your app. Give the app a name, like `Security Bot`
 and point it at your Slack workspace. Under "App Home" add a legacy bot user, giving your bot a name, like "CyberBot".
 Then, under the "OAuth and Permissions" menu, add some a Bot Token Scopes to give your bot some permissions. This is not quite least privilege, but
 better than nothing for the time being. Add the following scope:
+
 - bot
+
 Then, head to the top of the page and install your app to your workspace. Verify the perms look good, and then hit "Allow". Almost done!
 You'll now have a "Bot User OAuth Access Token" that you can configure in `config/bot.yaml` under `token` in the Slack section. 
 You'll also want to set up a channel to which the bot will report when users specify that they haven't performed an action.
