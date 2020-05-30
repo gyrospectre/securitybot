@@ -18,11 +18,18 @@ user:
       username: 'user'
       password: changeme
       host: ldap.example.com
+auth:
+  provider: okta
+  reauth_time: 3600
 duo:
+  package: DuoAuth
   ikey: 'IKEY'
   skey: 'SKEY'
   endpoint: 'XXXXXX.duosecurity.com'
-  auth_time: 3600
+okta:
+  package: OktaAuth
+  token: ''
+  endpoint: 'INSTANCE.okta.com'
 slack:
   username: 'CyberBot'
   token: 'TOKEN'
@@ -35,7 +42,7 @@ bot:
   time:
     opening_hour: 10
     closing_hour: 18
-    local_tz: pytz.timezone('America/Los_Angeles')
+    local_tz: pytz.timezone('Australia/Sydney')
 debug:
   level: 'debug'
 

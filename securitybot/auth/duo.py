@@ -27,6 +27,7 @@ class DuoAuth(Auth):
         self.username: str = username
         self.txid: str = None
         self.auth_time = datetime.min
+        self.reauth_time = config['auth']['reauth_time']
         self.state = AuthStates.NONE
 
     def can_auth(self) -> bool:
@@ -60,7 +61,7 @@ class DuoAuth(Auth):
         self.state = AuthStates.PENDING
 
     def _recently_authed(self) -> bool:
-        return (datetime.now() - self.auth_time) < timedelta(seconds=config['duo']['auth_time'])
+        return (datetime.now() - self.auth_time) < self.reauth_time
 
     def auth_status(self) -> int:
         if self.state == AuthStates.PENDING:

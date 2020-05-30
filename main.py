@@ -5,9 +5,15 @@ from securitybot.bot import SecurityBot
 from securitybot.chat.slack import Slack
 from securitybot.tasker import Tasker
 from securitybot.auth.duo import DuoAuth
+from securitybot.auth.okta import OktaAuth
 from securitybot.db.engine import DbEngine
-import duo_client
+
 from securitybot.config import config
+
+import duo_client
+
+from okta import UsersClient
+
 from sys import argv
 
 
@@ -22,10 +28,13 @@ def init():
     else:
         config.load_config('config/bot.yaml')
 
+    # Load preferred auth provider
+    module = 'securitybot.auth.{}'.format(config['auth']['provider'])
+    submodule = config[config['auth']['provider']]['package']
+    MFAuth = getattr(__import__(module, fromlist=[submodule]), submodule)
 
 def main():
     init()
-    # init_sql()
 
     # Create components needed for SecurityBot
     duo_api = duo_client.Auth(
@@ -33,7 +42,16 @@ def main():
         skey=config['duo']['skey'],
         host=config['duo']['endpoint']
     )
+    okta_client = UsersClient(
+        base_url='https://{}'.format(config['okta']['endpoint']),
+        api_token=config['okta']['token']
+    )
+
     duo_builder = lambda name: DuoAuth(duo_api, name)
+    okta_builder = lambda name: OktaAuth(okta_client, name)
+
+    auth = okta_builder
+    print(duo_builder)
     try:
         # Initialise DbEngine here
         DbEngine(config['database'])
@@ -44,7 +62,7 @@ def main():
     chat = Slack(config['slack'])
     tasker = Tasker()
 
-    sb = SecurityBot(chat, tasker, duo_builder, config['slack']['reporting_channel'])
+    sb = SecurityBot(chat, tasker, auth, config['slack']['reporting_channel'])
     sb.run()
 
 if __name__ == '__main__':
