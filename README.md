@@ -14,10 +14,11 @@ This guide runs through setting up a Securitybot instance as quickly as possible
 
 ## Quick Start
 Install vagrant and virtualbox on your dev machine. Then, deploy the code into a VM:
-
-`git clone https://github.com/gyrospectre/securitybot.git` 
-`cd securitybot`
-`vagrant up`
+```
+git clone https://github.com/gyrospectre/securitybot.git
+cd securitybot`
+vagrant up
+```
 Vagrant will spin up an Ubuntu VM, install and configure MySQL, and install python deps. Populate `config/bot.yaml` with your
 Slack token and reporting_channel (see Slack section below) at a minimum, and then run your bot!
 ```
