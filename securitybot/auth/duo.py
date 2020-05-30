@@ -9,24 +9,27 @@ from datetime import datetime, timedelta
 from urllib.parse import urlencode
 from typing import Callable
 
-from securitybot.auth.auth import Auth, AuthStates
+from securitybot.auth.auth import BaseAuthCient, AuthStates
 from securitybot.config import config
 
+import duo_client
 
-class DuoAuth(Auth):
 
-    def __init__(self, duo_api: Callable=None, username="") -> None:
+class AuthClient(BaseAuthCient):
+
+    def __init__(self, connection_config, username="") -> None:
         '''
         Args:
-            duo_api (duo_client.Auth): An Auth API client from Duo.
+            connection_config (Dict): Parameters required to connect to the Duo API
             username (str): The username of the person authorized through
                             this object.
         '''
         super().__init__()
-        self.client: Callable = duo_api
+        self.client = duo_client.Auth(**connection_config)
         self.username: str = username
         self.txid: str = None
         self.auth_time = datetime.min
+        self.reauth_time = config['auth']['reauth_time']
         self.state = AuthStates.NONE
 
     def can_auth(self) -> bool:
@@ -60,7 +63,7 @@ class DuoAuth(Auth):
         self.state = AuthStates.PENDING
 
     def _recently_authed(self) -> bool:
-        return (datetime.now() - self.auth_time) < timedelta(seconds=config['duo']['auth_time'])
+        return (datetime.now() - self.auth_time) < self.reauth_time
 
     def auth_status(self) -> int:
         if self.state == AuthStates.PENDING:

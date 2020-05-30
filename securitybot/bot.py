@@ -9,18 +9,18 @@ import logging
 import pytz
 import shlex
 import time
+
 from datetime import datetime, timedelta
 from re import sub
 
-import securitybot.commands as bot_commands
+from securitybot import loader
+
 from securitybot.user import User
 from securitybot.blacklist import Blacklist
 from securitybot.config import config
 
-# from typing import Any, Callable, Dict, List, Tuple
+import securitybot.commands as bot_commands
 
-TASK_POLL_TIME = timedelta(minutes=1)
-REPORTING_TIME = timedelta(hours=1)
 
 DEFAULT_COMMAND = {
     'fn': lambda b, u, a: logging.warn('No function provided for this command.'),
@@ -65,28 +65,28 @@ class SecurityBot(object):
     It's always dangerous naming classes the same name as the project...
     '''
 
-    def __init__(self, chat, tasker, auth_builder, reporting_channel):
+    def __init__(self, chat, auth):
         '''
         Args:
-            chat (Chat): The chat object to use for messaging.
-            tasker (Tasker): The Tasker object to get tasks from
-            auth_builder (Auth): The constructor to build Auth objects from.
-                                 It should take in only a username as a parameter.
+            chat (ChatClient): The type of chat client to use for messaging.
+            tasker (Tasker): The Tasker object to get tasks from.
+            auth (AuthClient): The type of auth client to use for MFA.
             reporting_channel (str): Channel ID to report alerts in need of verification to.
             config_path (str): Path to configuration file
         '''
         logging.info('Creating securitybot.')
-        self.tasker = tasker
-        self.auth_builder = auth_builder
-        self.reporting_channel = reporting_channel
+
         self._last_task_poll = datetime.min.replace(tzinfo=pytz.utc)
         self._last_report = datetime.min.replace(tzinfo=pytz.utc)
+        self._task_poll_time = timedelta(seconds=int(config['bot']['timers']['task_poll_time']))
+
+        # Connect to the chosen providers
+        self.auth = loader.build_auth_client(auth)
+        self.chat = loader.build_chat_client(chat)
+        self.tasker = loader.build_tasker()
 
         self._load_commands()
         self.messages = config['messages']
-
-        self.chat = chat
-        chat.connect()
 
         # Load blacklist from DB
         self.blacklist = Blacklist()
@@ -130,7 +130,7 @@ class SecurityBot(object):
         '''
         while True:
             now = datetime.now(tz=pytz.utc)
-            if now - self._last_task_poll > TASK_POLL_TIME:
+            if now - self._last_task_poll > self._task_poll_time:
                 self._last_task_poll = now
                 self.handle_new_tasks()
                 self.handle_in_progress_tasks()
@@ -298,7 +298,7 @@ class SecurityBot(object):
         logging.info('Gathering information about all team members...')
         members = self.chat.get_users()
         for member in members:
-            user = User(member, self.auth_builder(member['name']), self)
+            user = User(user=member, auth=self.auth, parent=self)
             self.users[member['id']] = user
             self.users_by_name[member['name']] = user
         logging.info('Gathered info on {} users.'.format(len(self.users)))

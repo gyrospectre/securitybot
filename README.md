@@ -55,7 +55,8 @@ For Duo, you'll want to create an [Auth API][auth-api] instances, name it someth
 I don't use Duo, so have not tested this.
 
 ### Okta
-Okta support in progress, building on [mew1033]'s initial work.
+Okta support in progress, building on [Chandler Newby][mew1033]'s initial work. I only have access to a read-only Okta API token, which does
+not allow push requests. Could work as is, but cannot test until I get hold of a more powerful API connection (in progress!).
  
 ### Running the bot
 Take a look at the provided `main.py` in the root directory for an example on how to use all of these.
