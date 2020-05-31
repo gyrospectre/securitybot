@@ -35,7 +35,7 @@ def load_auth_client(auth_provider):
 
 def build_auth_client(auth_provider):
     auth_class = load_auth_client(auth_provider)
-    connection_config = config[auth_provider]
+    connection_config = config['auth'][auth_provider]
 
     return auth_class(
         connection_config
@@ -65,7 +65,7 @@ def load_chat_client(chat_provider):
 
 def build_chat_client(chat_provider):
     chat_class = load_chat_client(chat_provider)
-    connection_config = config[chat_provider]
+    connection_config = config['chat'][chat_provider]
 
     return chat_class(
         connection_config

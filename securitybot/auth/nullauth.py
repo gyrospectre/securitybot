@@ -4,12 +4,12 @@ Dummy authenticator which returns always True.
 __author__ = 'Antoine Cardon'
 __email__ = 'antoine.cardon@algolia.com'
 
-from securitybot.auth.auth import Auth, AuthState
+from securitybot.auth.auth import BaseAuthClient, AuthStates
 
 
-class NullAuth(Auth):
+class AuthClient(BaseAuthClient):
 
-    def __init__(self) -> None:
+    def __init__(self, connection_config, username="") -> None:
         pass
 
     def can_auth(self) -> bool:

@@ -5,7 +5,19 @@ __author__ = 'Alex Bertsch, Antoine Cardon'
 __email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
 import logging
-from slackclient import SlackClient
+import asyncio
+import ssl as ssl_lib
+import certifi
+import threading
+import functools
+
+from slack import WebClient
+from slack import RTMClient
+
+from signal import SIGINT, SIGTERM
+
+from slack.errors import SlackApiError
+
 from typing import Callable, Any, Dict, List
 
 from securitybot.user import User
@@ -16,7 +28,6 @@ class ChatClient(BaseChatClient):
     '''
     A wrapper around the Slack API designed for Securitybot.
     '''
-
     # username: str, token: str, icon_url: str=None) -> None:
     def __init__(self, connection_config) -> None:
         '''
@@ -26,47 +37,40 @@ class ChatClient(BaseChatClient):
         self._username = connection_config['username']
         self._icon_url = connection_config['icon_url']
         self.reporting_channel = connection_config['reporting_channel']
-        print(self.reporting_channel)
-        self._slack = SlackClient(connection_config['token'])
-        self.connect()
-
+        self.messages = []
+        self._token = connection_config['token']
+        
+        self._slack_web = WebClient(self._token)
         self._validate()
+
+        loop = asyncio.new_event_loop()
+        thread = threading.Thread(target=self.connect, args=(loop,))
+        thread.start() 
 
     def _validate(self) -> None:
         '''Validates Slack API connection.'''
-        response = self._api_call('api.test')
+        response = self._slack_web.api_test()
         if not response['ok']:
             raise ChatException('Unable to connect to Slack API.')
         logging.info('Connection to Slack API successful!')
 
-    def _api_call(self, method: Callable, **kwargs) -> Dict[str, Any]:
-        '''
-        Performs a _validated_ Slack API call. After performing a normal API
-        call using SlackClient, validate that the call returned 'ok'. If not,
-        log and error.
+    def connect(self, loop):
+        asyncio.set_event_loop(loop)
+        ssl_context = ssl_lib.create_default_context(cafile=certifi.where())
 
-        Args:
-            method (str): The API endpoint to call.
-            **kwargs: Any arguments to pass on to the request.
-        Returns:
-            (dict): Parsed JSON from the response.
-        '''
-        response = self._slack.api_call(method, **kwargs)
-        if not ('ok' in response and response['ok']):
-            if kwargs:
-                logging.error('Bad Slack API request on {} with {}'.format(method, kwargs))
-            else:
-                logging.error('Bad Slack API request on {}'.format(method))
-        return response
-
-    def connect(self) -> None:
-        # type: () -> None
-        '''Connects to the chat system.'''
-        logging.info('Attempting to start Slack RTM session.')
-        if self._slack.rtm_connect():
-            logging.info('Slack RTM connection successful.')
-        else:
-            raise ChatException('Unable to start Slack RTM session')
+        self._slack_rtm = RTMClient(
+            token=self._token,
+            ssl=ssl_context,
+            run_async=True,
+            loop=loop
+        )
+        #loop.run_forever(
+        #    self._slack_rtm.start()
+        #)
+        self._slack_rtm.run_on(event="message")(self.get_message)
+        loop.run_until_complete(
+            self._slack_rtm.start()
+        )
 
     def get_users(self) -> List[Dict[str, Any]]:
         '''
@@ -84,9 +88,15 @@ class ChatClient(BaseChatClient):
                     }
             }
         '''
-        return self._api_call('users.list')['members']
+        return self._slack_web.users_list()['members']
 
-    def get_messages(self) -> List[Dict[str, Any]]:
+    def get_messages(self):
+        messages = self.messages
+        self.messages = []
+
+        return messages
+
+    async def get_message(self, **payload):
         '''
         Gets a list of all new messages received by the bot in direct
         messaging channels. That is, this function ignores all messages
@@ -98,9 +108,12 @@ class ChatClient(BaseChatClient):
             "text": The text of the received message.
         }
         '''
-        events = self._slack.rtm_read()
-        messages = [e for e in events if e['type'] == 'message']
-        return [m for m in messages if 'user' in m and m['channel'].startswith('D')]
+        data = payload["data"]
+        if 'user' in data and data['channel'].startswith('D'):
+            message = {}
+            message['user'] = data['user']
+            message['text'] = data['text']
+            self.messages.append(message)
 
     def send_message(self, channel: Any, message: str) -> None:
         '''
@@ -108,15 +121,17 @@ class ChatClient(BaseChatClient):
         As channels are possibly chat-system specific, this function has a horrible
         type signature.
         '''
-        self._api_call('chat.postMessage', channel=channel,
-                       text=message,
-                       username=self._username,
-                       as_user=False,
-                       icon_url=self._icon_url)
+        self._slack_web.chat_postMessage(
+            channel=channel,
+            text=message,
+            username=self._username,
+            as_user=False,
+            icon_url=self._icon_url
+        )
 
     def message_user(self, user: User, message: str=None):
         '''
         Sends some message to a desired user, using a User object and a string message.
         '''
-        channel = self._api_call('im.open', user=user['id'])['channel']['id']
+        channel = self._slack_web.im_open(user=user['id'])['channel']['id']
         self.send_message(channel, message)
