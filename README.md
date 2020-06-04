@@ -1,7 +1,7 @@
 # Securitybot
 ### Distributed alerting for the masses!
 A fork of the famous [Dropbox Security Bot][db-orig], which is no longer maintained and getting a bit long in the tooth! It's been given a fresh coat of paint,
-via [Antoine Cardon][algolia] who did some great work a few years ago with Python3 conversion and some extra cleanup.
+via [Antoine Cardon][algolia] who did some great work a few years ago with Python3 conversion and some extra cleanup. The project has moved to the new(er) Slack v2 SDK, which changed significantly from v1.
 
 Securitybot is an open-source implementation of a distributed alerting chat bot, as described in Ryan Huber's [blog post][slack-blog].
 Distributed alerting improves the monitoring efficiency of your security team and can help you catch security incidents faster and more efficiently.
@@ -51,12 +51,12 @@ You'll also want to set up a channel to which the bot will report when users spe
 Find the unique ID for that channel (it'll look similar to `C123456`), and pop that in `config/bot.yaml` too, as the `reporting_channel` key.
 
 ### Duo
-For Duo, you'll want to create an [Auth API][auth-api] instances, name it something clever, and keep track of the integration key, secret key, and auth API endpoint URI.
-I don't use Duo, so have not tested this.
+For Duo, you'll want to create an [Auth API][auth-api] instance, name it something clever, and keep track of the integration key, secret key, and auth API endpoint URI, adding to the config yaml as required.
+Caveat: I don't use Duo, so have not tested this functionality and it may well be broken. Feel free to fix and PR!
 
 ### Okta
-Okta support in progress, building on [Chandler Newby][mew1033]'s initial work. I only have access to a read-only Okta API token, which does
-not allow push requests. Could work as is, but cannot test until I get hold of a more powerful API connection (in progress!).
+Okta support has been added, building on [Chandler Newby][mew1033]'s initial work. You'll need a API token from the Okta
+console, and add it and the base url (in the form https://{org name}.okta.com) to `config/bot.yaml`.
  
 ### Running the bot
 Take a look at the provided `main.py` in the root directory for an example on how to use all of these.
@@ -113,7 +113,7 @@ If you encounter a SHA-256 collision, please contact someone at your nearest Uni
 
 ## FAQ
 
-Please ask us things
+No I will not add support for your chat/auth/database! You are free to add yourself and contribute back to the community though!
 
 ## Contributing
 Contributors must abide by the [Dropbox Contributor License Agreement][cla].

@@ -20,7 +20,7 @@ class AuthClient(BaseAuthClient):
 
     def _recently_authed(self) -> str:
         # type: () -> bool
-        return AuthState.AUTHORIZED
+        return AuthStates.AUTHORIZED
 
     def auth_status(self) -> bool:
         return True

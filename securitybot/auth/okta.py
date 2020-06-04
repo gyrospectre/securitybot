@@ -7,12 +7,14 @@ __author__ = 'Chandler Newby, Bill Mahony'
 __email__ = 'chandler.newby@gmail.com, paranoid@none.xyz'
 
 import logging
+import json
 
 from datetime import datetime
 
 from securitybot.auth.auth import BaseAuthClient, AuthStates
 
 from okta import UsersClient, FactorsClient
+from okta.framework.ApiClient import ApiClient
 
 
 class AuthClient(BaseAuthClient):
@@ -25,10 +27,14 @@ class AuthClient(BaseAuthClient):
                             this object.
         '''
         super().__init__()
+        connection_config['pathname'] = '/api/v1/users'
+
         self.usersclient = UsersClient(**connection_config)
         self.factorsclient = FactorsClient(**connection_config)
+        self.apiclient = ApiClient(**connection_config)
+
         self.username: str = username
-        self.username = "hardcoded" # Testing against Okta user that doesn't match Slack
+        self.username = "hard.code" # Testing against Okta user that doesn't match Slack
         self.auth_time = datetime.min
         self.state = AuthStates.NONE
         self.okta_user_id = None
@@ -66,15 +72,15 @@ class AuthClient(BaseAuthClient):
         # type: (str) -> None
         logging.debug('Sending Okta Push request for {}'.format(self.username))
 
-        res = self.factorsclient.verify_factor(
-            user_id=self.okta_user_id,
-            user_factor_id=self.okta_push_factor_id
-        )
-        # Currently failing here cause I only have access to a read only API acct!
-        print(res)
-        print(res.links)
-        print(res.links.href)
-        self.poll_url = res.links.href
+        ## Oktas SDK is broken! https://github.com/okta/okta-sdk-python/issues/66
+        #res = self.factorsclient.verify_factor(
+        #    user_id=self.okta_user_id,
+        #    user_factor_id=self.okta_push_factor_id
+        #)
+        ## Implement our own call which actually works
+        res = self.apiclient.post_path('/{0}/factors/{1}/verify'.format(self.okta_user_id, self.okta_push_factor_id))
+        res_obj = json.loads(res.text)
+        self.poll_url = res_obj['_links']['poll']['href']
         self.state = AuthStates.PENDING
 
     def _recently_authed(self):
@@ -84,8 +90,9 @@ class AuthClient(BaseAuthClient):
     def auth_status(self):
         # type: () -> int
         if self.state == AuthStates.PENDING:
-            response = self._make_get_request(self.poll_url)
-            res = response.factorResult
+            response = self.apiclient.get(self.poll_url)
+            response_obj = json.loads(response.text)
+            res = response_obj['factorResult']
             if res != 'WAITING':
                 if res == 'SUCCESS':
                     self.state = AuthStates.AUTHORIZED

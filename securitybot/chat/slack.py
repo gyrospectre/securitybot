@@ -9,16 +9,11 @@ import asyncio
 import ssl as ssl_lib
 import certifi
 import threading
-import functools
 
 from slack import WebClient
 from slack import RTMClient
 
-from signal import SIGINT, SIGTERM
-
-from slack.errors import SlackApiError
-
-from typing import Callable, Any, Dict, List
+from typing import Any, Dict, List
 
 from securitybot.user import User
 
