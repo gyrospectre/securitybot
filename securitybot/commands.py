@@ -18,7 +18,7 @@ from securitybot.util import create_new_alert
 
 def hi(bot, user, args):
     '''Says hello to a user.'''
-    bot.chat.message_user(user, bot.messages['hi'].format(user.get_name()))
+    bot._chatclient.message_user(user, bot.messages['hi'].format(user.get_name()))
 
 
 def help(bot, user, args):
@@ -31,7 +31,7 @@ def help(bot, user, args):
                 usage_str = '\n'.join(['> \t' + s for s in info['usage']])
                 msg += '> {0}:\n{1}\n'.format(bot.messages['help_usage'], usage_str)
     msg += bot.messages['help_footer']
-    bot.chat.message_user(user, msg)
+    bot._chatclient.message_user(user, msg)
 
 
 def add_to_blacklist(bot, user, args):
@@ -98,13 +98,24 @@ def ignore(bot, user, args):
         bot.chat.message_user(user, bot.messages['ignore_no_time'])
         return False
 
-    ignored_alerts.ignore_task(user['name'], task.title, 'ignored', ignoretime)
+    ignored_alerts.ignore_task(
+        dbclient=bot._dbclient,
+        username=user['name'],
+        title=task.title,
+        reason='ignored',
+        ttl=ignoretime
+    )
     return True
 
 
 def test(bot, user, args):
     '''Creates a new test alert in Maniphest for a user.'''
-    create_new_alert('testing_alert', user['name'],
-                     'Testing alert', 'Testing Securitybot')
+    create_new_alert(
+        dbclient=bot._dbclient,
+        title='testing_alert',
+        ldap=user['name'],
+        description='Testing alert',
+        reason='Testing Securitybot'
+    )
 
     return True

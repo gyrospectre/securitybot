@@ -13,34 +13,31 @@ from datetime import datetime
 
 from securitybot.auth.auth import BaseAuthClient, AuthStates
 
+from securitybot.exceptions import AuthException
+
 from okta import UsersClient, FactorsClient
 from okta.framework.ApiClient import ApiClient
 
 
 class AuthClient(BaseAuthClient):
 
-    def __init__(self, connection_config, username="") -> None:
+    def __init__(self, connection_config, reauth_time, auth_attrib) -> None:
         '''
         Args:
             connection_config (Dict): Parameters required to connect to the Okta API
-            username (str): The username of the person authorized through
-                            this object.
+            reauth_time (int): The min time in seconds to cache auth requests
+            auth_attrib (str): The attribute of the user record that will be used to
+                               authenticate them.
         '''
-        super().__init__()
+        super().__init__(reauth_time, auth_attrib)
         connection_config['pathname'] = '/api/v1/users'
 
         self.usersclient = UsersClient(**connection_config)
         self.factorsclient = FactorsClient(**connection_config)
         self.apiclient = ApiClient(**connection_config)
 
-        self.username: str = username
-        self.username = "hard.code" # Testing against Okta user that doesn't match Slack
-        self.auth_time = datetime.min
-        self.state = AuthStates.NONE
-        self.okta_user_id = None
-        self.okta_push_factor_id = None
-        self.poll_url = None
-        self.state = AuthStates.NONE
+        # Maintain a per user lookup for poll URL
+        self.poll_url = {}
 
     def _get_okta_userid(self, username):
         user = self.usersclient.get_users(query=username, limit=1)
@@ -51,61 +48,80 @@ class AuthClient(BaseAuthClient):
             return None
 
     def _get_factors(self, userid):
-        return self.factorsclient.get_lifecycle_factors(userid)
+        try:
+            return self.factorsclient.get_lifecycle_factors(userid)
+        except:
+            return None
 
-    def can_auth(self):
+    def can_auth(self, user):
         # type: () -> bool
         # Check Okta user for a push factor.
+        # Returns false is not available
+        # Returns factor Id if it is
         # TODO: Add support for other types of auth (TOTP, etc).
-        logging.debug('Checking auth capabilities for {}'.format(self.username))
+        username = self._auth_attribute(user)
+        if username is not False:
+            logging.debug('Checking auth capabilities for {}'.format(username))
 
-        self.okta_user_id = self._get_okta_userid(self.username)
-        factors = self._get_factors(self.okta_user_id)
-        for factor in factors:
-            if factor.factorType == 'push':
-                self.okta_push_factor_id = factor.id
-                return True
+            okta_user_id = self._get_okta_userid(username)
+            factors = self._get_factors(okta_user_id)
+            if factors is not None:
+                for factor in factors:
+                    if factor.factorType == 'push':
+                        return factor.id
 
         return False
 
-    def auth(self, reason=None):
+    def auth(self, user, reason=None):
         # type: (str) -> None
-        logging.debug('Sending Okta Push request for {}'.format(self.username))
+        logging.debug('Sending Okta Push request for {}'.format(self._auth_attribute(user)))
 
-        ## Oktas SDK is broken! https://github.com/okta/okta-sdk-python/issues/66
+        ## Okta's SDK is broken! https://github.com/okta/okta-sdk-python/issues/66
         #res = self.factorsclient.verify_factor(
         #    user_id=self.okta_user_id,
         #    user_factor_id=self.okta_push_factor_id
         #)
         ## Implement our own call which actually works
-        res = self.apiclient.post_path('/{0}/factors/{1}/verify'.format(self.okta_user_id, self.okta_push_factor_id))
-        res_obj = json.loads(res.text)
-        self.poll_url = res_obj['_links']['poll']['href']
-        self.state = AuthStates.PENDING
+        okta_user_id = self._get_okta_userid(self._auth_attribute(user))
+        res = self.apiclient.post_path(
+            '/{0}/factors/{1}/verify'.format(
+                okta_user_id,
+                user._factor_id
+            )
+        )
+        try:
+            res_obj = json.loads(res.text)
+        except Exception as error:
+            raise AuthException(error)
 
-    def _recently_authed(self):
-        # type: () -> bool
-        return (datetime.now(tz=pytz.utc) - self.auth_time) < self.reauth_time
+        self.poll_url[okta_user_id] = res_obj['_links']['poll']['href']
+        user._last_auth_state = AuthStates.PENDING
 
-    def auth_status(self):
+    def auth_status(self, user):
         # type: () -> int
-        if self.state == AuthStates.PENDING:
-            response = self.apiclient.get(self.poll_url)
+        okta_user_id = self._get_okta_userid(
+            self._auth_attribute(user)
+        )
+
+        if user._last_auth_state == AuthStates.PENDING:
+            response = self.apiclient.get(self.poll_url[okta_user_id])
             response_obj = json.loads(response.text)
             res = response_obj['factorResult']
             if res != 'WAITING':
                 if res == 'SUCCESS':
-                    self.state = AuthStates.AUTHORIZED
-                    self.auth_time = datetime.now(tz=pytz.utc)
+                    user._last_auth_state = AuthStates.AUTHORIZED
+                    user._last_auth_time = datetime.now(tz=pytz.utc)
                 else:
-                    self.state = AuthStates.DENIED
-                    self.auth_time = datetime.min
-        elif self.state == AuthStates.AUTHORIZED:
-            if not self._recently_authed():
-                self.state = AuthStates.NONE
-        return self.state
+                    user._last_auth_state = AuthStates.DENIED
+                    user._last_auth_time = datetime.min
+        elif user._last_auth_state == AuthStates.AUTHORIZED:
+            if not self._recently_authed(user):
+                user._last_auth_state = AuthStates.NONE
+        return user._last_auth_state
 
-    def reset(self):
-        # type: () -> None
-        self.poll_url = None
-        self.state = AuthStates.NONE
+    def reset(self, user):
+        okta_user_id = self._get_okta_userid(
+            self._auth_attribute(user)
+        )
+        self.poll_url.pop(okta_user_id, None)
+        user._last_auth_state = AuthStates.NONE

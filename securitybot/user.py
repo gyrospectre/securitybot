@@ -14,9 +14,6 @@ from securitybot.auth.auth import AuthStates
 from securitybot.state_machine import StateMachine
 from securitybot.util import tuple_builder, get_expiration_time
 
-ESCALATION_TIME = timedelta(minutes=2)
-BACKOFF_TIME = timedelta(hours=21)
-
 
 class User(object):
     '''
@@ -26,7 +23,7 @@ class User(object):
     bot who spawned it for sending messages.
     '''
 
-    def __init__(self, user, auth, parent):
+    def __init__(self, user, auth, dbclient, parent):
         '''
         Args:
             user (dict): Chat information about a user.
@@ -37,19 +34,29 @@ class User(object):
         self.tasks = []
         self.pending_task = None
         # Authentication object specific to this user
-        self.auth = auth
+        self._authclient = auth
+        self._dbclient = dbclient
 
         # Parent pointer to bot
-        self.parent = parent
+        self._bot = parent
 
         # Last parsed message from this user
         self._last_message = tuple_builder()
 
-        # Last authorization status
-        self._last_auth = AuthStates.NONE
+        # Last authorization details
+        self._last_auth_state = AuthStates.NONE
+        self._last_auth_time = datetime.min
 
         # Task auto-escalation time
         self._escalation_time = datetime.max.replace(tzinfo=pytz.utc)
+
+        # If user is enrolled in MFA
+        self._can_auth = self._authclient.can_auth(self)
+
+        # Factor to be used for MFA
+        if self._can_auth is not False:
+            self._factor_id = self._can_auth
+            self._can_auth = True
 
         # Build state hierarchy
         states = ['need_task',
@@ -109,7 +116,7 @@ class User(object):
                 'source': 'auth_permission_check',
                 'dest': 'task_finished',
                 'condition': self._denies_authorization,
-                'action': lambda: self.send_message('escalated'),
+                'action': self._act_on_denied_mfa
             },
             # Silently escalate and wait after some time goes by again
             {
@@ -179,7 +186,7 @@ class User(object):
 
     def _cannot_2fa(self):
         # type: () -> bool
-        return self._performed_action() and not self.auth.can_auth()
+        return self._performed_action() and not self._can_auth
 
     def _performed_action(self):
         # type: () -> bool
@@ -194,7 +201,7 @@ class User(object):
     def _slow_response_time(self):
         # type: () -> bool
         '''Returns true if the user has taken a long time to respond.'''
-        return datetime.now(tz=pytz.utc) > self._escalation_time
+        return datetime.now(tz=pytz.utc) > (self.pending_task.event_time + timedelta(minutes=self._bot._escalation_time_mins))
 
     def _allows_authorization(self):
         # type: () -> bool
@@ -233,16 +240,37 @@ class User(object):
         # Send escalation method
         self.send_message('escalated')
         # Alert bot's reporting channel
-        if self.parent.chat.reporting_channel is not None:
+        if self._bot._chatclient.reporting_channel is not None:
             # Format message
             if self._last_message.text:
                 comment = self._last_message.text
             else:
                 comment = 'No comment provided.'
             comment = '\n'.join('> ' + s for s in comment.split('\n'))
-            self.parent.chat.send_message(
-                self.parent.chat.reporting_channel,
-                self.parent.messages['report'].format(username=self['name'],
+            self._bot._chatclient.send_message(
+                self._bot._chatclient.reporting_channel,
+                self._bot.messages['report'].format(username=self['name'],
+                                                      title=self.pending_task.title,
+                                                      description=self.pending_task.description,
+                                                      comment=comment,
+                                                      url=self.pending_task.url))
+
+    def _act_on_denied_mfa(self):
+        # type: () -> None
+        '''
+        Acts on a user not ok with an MFA.
+        Sends a message and alerts the bot's reporting channel.
+        '''
+        # Send escalation method
+        self.send_message('escalated')
+        # Alert bot's reporting channel
+        if self._bot._chatclient.reporting_channel is not None:
+            # Format message
+            comment = 'User not comfortable performing MFA check.'
+            comment = '\n'.join('> ' + s for s in comment.split('\n'))
+            self._bot._chatclient.send_message(
+                self._bot._chatclient.reporting_channel,
+                self._bot.messages['report'].format(username=self['name'],
                                                       title=self.pending_task.title,
                                                       description=self.pending_task.description,
                                                       comment=comment,
@@ -297,9 +325,13 @@ class User(object):
         user of its existence.
         '''
         self.pending_task = self.tasks.pop(0)
-        self.parent.alert_user(self, self.pending_task)
+        self._bot.alert_user(self, self.pending_task)
         self._reset_message()
-        self._escalation_time = get_expiration_time(datetime.now(tz=pytz.utc), ESCALATION_TIME)
+        self._escalation_time = get_expiration_time(
+            start=datetime.now(tz=pytz.utc),
+            ttl=timedelta(minutes=self._bot._escalation_time_mins),
+            bot=self._bot
+        )
         logging.info('Beginning task for {0}'.format(self['name']))
 
     def _complete_task(self):
@@ -311,8 +343,13 @@ class User(object):
         '''
         # Ignore an alert if they did it
         if self.pending_task.performed:
-            ignored_alerts.ignore_task(self['name'], self.pending_task.title,
-                                       'auto backoff after confirmation', BACKOFF_TIME)
+            ignored_alerts.ignore_task(
+                dbclient=self._dbclient,
+                username=self['name'],
+                title=self.pending_task.title,
+                reason='auto backoff after confirmation',
+                ttl=timedelta(hours=self._bot._backoff_time_hrs)
+            )
         self.pending_task.set_verifying()
         self.pending_task = None
         self._reset_message()
@@ -321,14 +358,14 @@ class User(object):
             self.send_message('bwtm')
         else:
             self.send_message('bye')
-            self.parent.cleanup_user(self)
+            self._bot.cleanup_user(self)
 
     def _update_tasks(self):
         # type: () -> None
         '''
         Updates the user's stored list of tasks, removing all of those that should be ignored.
         '''
-        ignored = ignored_alerts.get_ignored(self['name'])
+        ignored = ignored_alerts.get_ignored(self._dbclient, self['name'])
         cleaned_tasks = []
         for task in self.tasks:
             if task.title in ignored:
@@ -369,7 +406,7 @@ class User(object):
         Args:
             key (str): The key in messages.yaml of the message to send.
         '''
-        self.parent.chat.message_user(self, self.parent.messages[key])
+        self._bot._chatclient.message_user(self, self._bot.messages[key])
 
     # Authorization methods
 
@@ -380,14 +417,14 @@ class User(object):
         WAITING_ON_AUTH.
         '''
         self.send_message('sending_push')
-        self.auth.auth(self.pending_task.description)
+        self._authclient.auth(self, self.pending_task.description)
 
     def auth_status(self):
         # type: () -> int
         '''
-        Gets the current authorization status.
+        Gets the current authorization status for this user.
         '''
-        return self.auth.auth_status()
+        return self._authclient.auth_status(self)
 
     def reset_auth(self):
         # type: () -> None
@@ -395,7 +432,7 @@ class User(object):
         Resets this user's authorization status, including no longer accepting
         authorization due to being "recently" authorized.
         '''
-        self.auth.reset()
+        self._authclient.reset(self)
 
     # Utility methods
 
@@ -410,6 +447,19 @@ class User(object):
             return self._user['profile']['first_name']
         return self._user['name']
 
+    def get_email(self):
+        if ('profile' in self._user and
+                'email' in self._user['profile'] and
+                self._user['profile']['email']):
+            return self._user['profile']['email']
+        return False
+
+    def get_displayname(self):
+        if ('profile' in self._user and
+                'email' in self._user['profile'] and
+                self._user['profile']['display_name']):
+            return self._user['profile']['display_name']
+        return False
 
 class UserException(Exception):
     pass

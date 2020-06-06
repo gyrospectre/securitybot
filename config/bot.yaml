@@ -1,16 +1,24 @@
-includes:
+bot:
   messages_path: config/messages.yaml
   commands_path: config/commands.yaml
-  queries:
-    mysql: config/queries/mysql.yaml
+  timers:
+    task_poll_time: 60
+  time:
+    opening_hour: 10
+    closing_hour: 18
+    local_tz: 'Australia/Sydney'
+    escalation_time_mins: 2
+    backoff_time_hrs: 21
+
 database:
-  type: sql
-  engine: SQLEngine
-  queries: mysql
-  user: root
-  password: password
-  host: 127.0.0.1
-  db: securitybot
+  provider: sql
+  sql:
+    user: root
+    password: password
+    host: 127.0.0.1
+    db: securitybot
+    queries_path: config/queries/mysql.yaml
+
 user: 
   fetcher:
     name: ldap
@@ -18,30 +26,28 @@ user:
       username: 'user'
       password: changeme
       host: ldap.example.com
+
 auth:
   provider: okta
   reauth_time: 3600
+  auth_attrib: displayname
+  nullauth:
+  okta:
+    api_token: 'TOKEN'
+    base_url: 'https://XXXXXX.okta.com'
+  duo:
+    ikey: 'IKEY'
+    skey: 'SKEY'
+    endpoint: 'XXXXXX.duosecurity.com'
+
 chat:
   provider: slack
-duo:
-  ikey: 'IKEY'
-  skey: 'SKEY'
-  endpoint: 'XXXXXX.duosecurity.com'
-okta:
-  api_token: ''
-  base_url: ''
-slack:
-  username: 'CyberBot'
-  token: ''
-  reporting_channel: ''
-  icon_url: 'https://dl.dropboxusercontent.com/s/t01pwfrqzbz3gzu/securitybot.png'
-bot:
-  timers:
-    task_poll_time: 60
-  time:
-    opening_hour: 10
-    closing_hour: 18
-    local_tz: pytz.timezone('Australia/Sydney')
+  slack:
+    username: 'CyberBot'
+    token: 'TOKEN'
+    reporting_channel: 'CXXXXXXXX'
+    icon_url: 'https://dl.dropboxusercontent.com/s/t01pwfrqzbz3gzu/securitybot.png'
+
 debug:
   level: 'debug'
 

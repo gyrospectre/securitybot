@@ -37,6 +37,7 @@ get_alerts: >
        reason,
        description,
        url,
+       event_time,
        performed,
        comment,
        authenticated,

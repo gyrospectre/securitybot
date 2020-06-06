@@ -12,3 +12,6 @@ class ChatException(Exception):
 
 class AuthException(Exception):
     pass
+
+class DbException(Exception):
+    pass

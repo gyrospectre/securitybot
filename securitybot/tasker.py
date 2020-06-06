@@ -7,11 +7,11 @@ respectively.
 __author__ = 'Alex Bertsch, Antoine Cardon'
 __email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
-from enum import Enum, unique
-from typing import List
+import pytz
 
-from securitybot.db.engine import DbEngine
-from securitybot.config import config
+from enum import Enum, unique
+
+from typing import List
 
 
 @unique
@@ -24,8 +24,8 @@ class StatusLevel(Enum):
 
 class Task(object):
 
-    def __init__(self, hsh, title, username, reason, description, url, performed, comment,
-                 authenticated, status):
+    def __init__(self, hsh, title, username, reason, description, url, event_time,
+                 performed, comment, authenticated, status, dbclient):
         # type: (str, str, str, str, str, bool, str, bool, int) -> None
         '''
         Creates a new Task for an alert that should go to `username` and is
@@ -49,11 +49,12 @@ class Task(object):
         self.reason = reason
         self.description = description
         self.url = url
+        self.event_time = event_time.astimezone(pytz.UTC)
         self.performed = performed
         self.comment = comment
         self.authenticated = authenticated
         self.status = status
-        self._db_engine = DbEngine()
+        self._dbclient = dbclient
         self.hash = hsh
 
     def _set_status(self, status):
@@ -64,14 +65,14 @@ class Task(object):
         Args:
             status (int): The new status to use.
         '''
-        self._db_engine.execute(config['queries']['set_status'], (status, self.hash))
+        self._dbclient.execute(self._dbclient.queries['set_status'], (status, self.hash))
 
     def _set_response(self):
         # type: () -> None
         '''
         Updates the user response for this task.
         '''
-        self._db_engine.execute(config['queries']['set_response'], (self.comment,
+        self._dbclient.execute(self._dbclient.queries['set_response'], (self.comment,
                                                                     self.performed,
                                                                     self.authenticated,
                                                                     self.hash))
@@ -92,8 +93,8 @@ class Tasker(object):
     A simple class to retrieve tasks on which the bot should act upon.
     '''
 
-    def __init__(self):
-        self._db_engine = DbEngine()
+    def __init__(self, dbclient):
+        self._dbclient = dbclient
 
     def _get_tasks(self, level) -> List[Task]:
         # type: (int) -> List[Task]
@@ -105,8 +106,8 @@ class Tasker(object):
         Returns:
             List of SQLTasks.
         '''
-        alerts = self._db_engine.execute(config['queries']['get_alerts'], (level,))
-        return [Task(*alert) for alert in alerts]
+        alerts = self._dbclient.execute(self._dbclient.queries['get_alerts'], (level,))
+        return [Task(*alert, dbclient=self._dbclient) for alert in alerts]
 
     def get_new_tasks(self):
         # type: () -> List[Task]

@@ -1,9 +1,7 @@
-#!/usr/bin/env python
 import logging
 
 from securitybot.bot import SecurityBot
-from securitybot.db.engine import DbEngine
-from securitybot.config import config
+from securitybot.config import Config
 
 
 def main():
@@ -13,20 +11,18 @@ def main():
     logging.getLogger('requests').setLevel(logging.WARNING)
     logging.getLogger('usllib3').setLevel(logging.WARNING)
 
+    config = Config()
     config.load_config('config/bot.yaml')
 
-    # Connect to DB
+    # Try and create a bot instance
     try:
-        DbEngine(config['database'])
+        sb = SecurityBot(config=config)
+
     except KeyError:
-        logging.error('No database configuration')
+        logging.error('Configuration missing')
         raise
 
-    sb = SecurityBot(
-        chat=config['chat']['provider'],
-        auth=config['auth']['provider'],
-    )
-
+    # Run the bot
     sb.run()
 
 if __name__ == '__main__':

@@ -53,7 +53,7 @@ sending_push: >
 
 # Message sent on 2FA approval
 good_auth: >
-    Awesome, I've noted what you've said and should take care of this.
+    Awesome, I've noted what you've said and that should take care of this.
 
 # Message sent on 2FA denial
 bad_auth: >

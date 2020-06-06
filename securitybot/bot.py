@@ -17,7 +17,6 @@ from securitybot import loader
 
 from securitybot.user import User
 from securitybot.blacklist import Blacklist
-from securitybot.config import config
 
 import securitybot.commands as bot_commands
 
@@ -65,7 +64,7 @@ class SecurityBot(object):
     It's always dangerous naming classes the same name as the project...
     '''
 
-    def __init__(self, chat, auth):
+    def __init__(self, config):
         '''
         Args:
             chat (ChatClient): The type of chat client to use for messaging.
@@ -79,17 +78,44 @@ class SecurityBot(object):
         self._last_task_poll = datetime.min.replace(tzinfo=pytz.utc)
         self._last_report = datetime.min.replace(tzinfo=pytz.utc)
         self._task_poll_time = timedelta(seconds=int(config['bot']['timers']['task_poll_time']))
+        self._opening_time = config['bot']['time']['opening_hour']
+        self._closing_time = config['bot']['time']['closing_hour']
+        self._local_tz = pytz.timezone(config['bot']['time']['local_tz'])
+        self._escalation_time_mins = config['bot']['time']['escalation_time_mins']
+        self._backoff_time_hrs = config['bot']['time']['backoff_time_hrs']
 
         # Connect to the chosen providers
-        self.auth = loader.build_auth_client(auth)
-        self.chat = loader.build_chat_client(chat)
-        self.tasker = loader.build_tasker()
+        auth_provider = config['auth']['provider']
+        db_provider = config['database']['provider']
+        chat_provider = config['chat']['provider']
 
-        self._load_commands()
-        self.messages = config['messages']
+        self._dbclient = loader.build_db_client(
+            db_provider=db_provider,
+            connection_config=config['database'][db_provider]
+        )
+        self._authclient = loader.build_auth_client(
+            auth_provider=auth_provider,
+            connection_config=config['auth'][auth_provider],
+            reauth_time=config['auth']['reauth_time'],
+            auth_attrib=config['auth']['auth_attrib']
+        )
+        self._chatclient = loader.build_chat_client(
+            chat_provider=chat_provider,
+            connection_config=config['chat'][chat_provider]
+        )
+        self.tasker = loader.build_tasker(self._dbclient)
+
+        self._import_commands(
+            config=loader.load_yaml(
+                config['bot']['commands_path']
+            )
+        )
+        self.messages = config=loader.load_yaml(
+            config['bot']['messages_path']
+        )
 
         # Load blacklist from DB
-        self.blacklist = Blacklist()
+        self.blacklist = Blacklist(self._dbclient)
 
         # A dictionary to be populated with all members of the team
         self.users = {}
@@ -104,12 +130,12 @@ class SecurityBot(object):
 
         logging.info('Done!')
 
-    def _load_commands(self) -> None:
+    def _import_commands(self, config) -> None:
         '''
-        Loads commands from a configuration file.
+        Imports commands from a configuration blob.
         '''
         self.commands = {}
-        for name, cmd in config['commands'].items():
+        for name, cmd in config.items():
             new_cmd = DEFAULT_COMMAND.copy()
             new_cmd.update(cmd)
 
@@ -146,7 +172,7 @@ class SecurityBot(object):
         Currently only active users are considered, i.e. we don't care if a user
         sends us a message but we haven't sent them anything.
         '''
-        messages = self.chat.get_messages()
+        messages = self._chatclient.get_messages()
         for message in messages:
             user_id = message['user']
             text = message['text']
@@ -156,7 +182,7 @@ class SecurityBot(object):
             if self.is_command(text):
                 self.handle_command(user, text)
             else:
-                self.chat.message_user(user, self.messages['bad_command'])
+                self._chatclient.message_user(user, self.messages['bad_command'])
 
     def handle_command(self, user, command):
         # type: (User, str) -> None
@@ -168,10 +194,10 @@ class SecurityBot(object):
         cmd = self.commands[key]
         if cmd['fn'](self, user, args):
             if cmd['success_msg']:
-                self.chat.message_user(user, cmd['success_msg'])
+                self._chatclient.message_user(user, cmd['success_msg'])
         else:
             if cmd['failure_msg']:
-                self.chat.message_user(user, cmd['failure_msg'])
+                self._chatclient.message_user(user, cmd['failure_msg'])
 
     def valid_user(self, username):
         # type: (str) -> bool
@@ -207,7 +233,7 @@ class SecurityBot(object):
                 if user_id not in self.active_users:
                     logging.debug('Adding {} to active users'.format(username))
                     self.active_users[user_id] = user
-                    self.greet_user(user)
+
                 user.add_task(task)
                 task.set_in_progress()
         else:
@@ -279,13 +305,15 @@ class SecurityBot(object):
             user (User): The user associated with the task.
             task (Task): A task to alert on.
         '''
+        self.greet_user(user)
+
         # Format the reason to be indented
         reason = '\n'.join(['>' + s for s in task.reason.split('\n')])
 
         message = self.messages['alert'].format(task.description, reason)
         message += '\n'
         message += self.messages['action_prompt']
-        self.chat.message_user(user, message)
+        self._chatclient.message_user(user, message)
 
     # User creation and lookup methods
 
@@ -296,9 +324,9 @@ class SecurityBot(object):
         etc.
         '''
         logging.info('Gathering information about all team members...')
-        members = self.chat.get_users()
+        members = self._chatclient.get_users()
         for member in members:
-            user = User(user=member, auth=self.auth, parent=self)
+            user = User(user=member, auth=self._authclient, dbclient=self._dbclient, parent=self)
             self.users[member['id']] = user
             self.users_by_name[member['name']] = user
         logging.info('Gathered info on {} users.'.format(len(self.users)))
@@ -341,7 +369,7 @@ class SecurityBot(object):
         Args:
             user (User): The user to greet.
         '''
-        self.chat.message_user(user, self.messages['greeting'].format(user.get_name()))
+        self._chatclient.message_user(user, self.messages['greeting'].format(user.get_name()))
 
     # Command functions
     def is_command(self, command):

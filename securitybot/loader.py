@@ -1,10 +1,13 @@
-from importlib import import_module
+import yaml
+import json
 
-from securitybot.config import config
+from importlib import import_module
 
 from securitybot.auth.auth import BaseAuthClient
 
 from securitybot.chat.chat import BaseChatClient
+
+from securitybot.db.database import BaseDbClient
 
 from securitybot.tasker import Tasker
 
@@ -33,12 +36,13 @@ def load_auth_client(auth_provider):
             )
         )
 
-def build_auth_client(auth_provider):
+def build_auth_client(auth_provider, connection_config, reauth_time, auth_attrib):
     auth_class = load_auth_client(auth_provider)
-    connection_config = config['auth'][auth_provider]
 
     return auth_class(
-        connection_config
+        connection_config,
+        reauth_time,
+        auth_attrib
     )
 
 def load_chat_client(chat_provider):
@@ -63,13 +67,45 @@ def load_chat_client(chat_provider):
             )
         )
 
-def build_chat_client(chat_provider):
+def build_chat_client(chat_provider, connection_config):
     chat_class = load_chat_client(chat_provider)
-    connection_config = config['chat'][chat_provider]
 
     return chat_class(
         connection_config
     )
 
-def build_tasker():
-    return Tasker()
+def build_tasker(dbclient):
+    return Tasker(dbclient)
+
+def load_db_client(db_provider):
+    try:
+        sanitized_provider = db_provider.lower()
+        module_name = 'securitybot.db.{}'.format(
+            sanitized_provider
+        )
+        module = import_module(module_name)
+        client = getattr(module, 'DbClient')
+
+        if not issubclass(client, BaseDbClient):
+            raise AttributeError(
+                '{} is not a Db Provider'.format(module_name)
+            )
+
+        return client
+    except (ModuleNotFoundError, AttributeError) as e:
+        raise InvalidAuthProvider(
+            'DB Provider for "{}" is not available: {}'.format(
+                db_provider, e
+            )
+        )
+
+def build_db_client(db_provider, connection_config):
+    db_class = load_db_client(db_provider)
+
+    return db_class(
+        config=connection_config,
+        queries=load_yaml(connection_config['queries_path']) 
+    )
+
+def load_yaml(path):
+    return yaml.safe_load(open(path))

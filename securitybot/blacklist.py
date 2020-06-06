@@ -4,20 +4,17 @@ A generic blacklist class.
 __author__ = 'Alex Bertsch, Antoine Cardon'
 __email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
-from securitybot.db.engine import DbEngine
-from securitybot.config import config
-
 
 class Blacklist(object):
 
-    def __init__(self):
+    def __init__(self, dbclient):
         # type: () -> None
         '''
         Creates a new blacklist tied to a table named "blacklist".
         '''
         # Load from table
-        self._db_engine = DbEngine()
-        names = self._db_engine.execute(config['queries']['blacklist_list'])
+        self._db_engine = dbclient
+        names = self._db_engine.execute(self._db_engine.queries['blacklist_list'])
         # Break tuples into names
         self._blacklist = {name[0] for name in names}
 

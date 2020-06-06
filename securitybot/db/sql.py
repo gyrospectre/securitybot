@@ -8,13 +8,14 @@ import MySQLdb
 import logging
 from typing import Any, Dict, Sequence
 
-from securitybot.db.engine import EngineInterface, EngineException, register_engine
+from securitybot.db.database import BaseDbClient
+
+from securitybot.exceptions import DbException
 
 
-@register_engine
-class SQLEngine(EngineInterface):
+class DbClient(BaseDbClient):
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], queries):
         '''
         Initializes the SQL connection to be used for the bot.
 
@@ -26,6 +27,7 @@ class SQLEngine(EngineInterface):
         self._passwd = config.get('password', None)
         self._db = config.get('db', None)
         self._create_engine()
+        self.queries = queries
 
     def _create_engine(self):
         # type: (str, str, str, str) -> None
@@ -74,5 +76,5 @@ class SQLEngine(EngineInterface):
         return rows
 
 
-class SQLEngineException(EngineException):
+class SQLEngineException(DbException):
     pass
