@@ -113,7 +113,7 @@ We currently provide bindings for Slack, but feel free to contribute any other p
 Messaging is made possible by `securitybot/chat/chat.py` which provides a small number of functions for querying users in a messaging group, messaging those users, and sending messages to a specific channel/room.
 To add bindings for a new messaging system, subclass `Chat`.
 
-## Secrets
+### Secrets
 In the main `bot.yaml` config file, any secrets are defined in the `secretsmgmt` section, as well as defining which provider to use. The secrets are loaded from the backend
 using the structure of the secrets stanza, and mapped into the rest of the config at run time. Secrets are not written to disk, but are in memory for the life of the 
 Security Bot instance.
