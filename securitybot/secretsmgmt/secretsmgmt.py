@@ -24,3 +24,7 @@ class BaseSecretsClient(object, metaclass=ABCMeta):
         '''Fetch a secret from the backend'''
         pass
 
+    @abstractmethod
+    def create_secret(self, name, value, description):
+        '''Store a new secret in the backend'''
+        pass

@@ -13,7 +13,7 @@ bot:
 
 secretsmgmt:
   # How secrets will be managed, and which secrets to use
-  # Supported: Hashicorp Vault (vault), AWS Secrets Manager (secretsmanager)
+  # Supported: Hashicorp Vault (vault), AWS Secrets Manager (awssecretsmanager)
   provider: vault
   secrets:
     chat:
@@ -23,16 +23,11 @@ secretsmgmt:
       mysql:
         - user
         - password
-    auth:
-      okta:
-        - api_token
-      duo:
-        - ikey
-        - skey
+
   vault:
     token_env: 'VAULT_TOKEN_ID'
     url: 'http://127.0.0.1:8200'
-  secretsmanager:
+  awssecretsmanager:
 
 database:
   # How state will be maintained

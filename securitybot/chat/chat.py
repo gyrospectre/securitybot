@@ -10,7 +10,6 @@ from typing import List, Dict, Any
 
 from securitybot.user import User
 
-from securitybot.exceptions import ChatException
 
 class BaseChatClient(object, metaclass=ABCMeta):
     '''

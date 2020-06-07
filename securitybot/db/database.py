@@ -8,8 +8,6 @@ __email__ = 'antoine.cardon@algolia.com, xxx@xxx.xx'
 from typing import Any, List, Dict
 from abc import ABCMeta, abstractmethod
 
-from securitybot.utils.class_helper import Singleton
-
 
 class BaseDbClient(object, metaclass=ABCMeta):
     '''

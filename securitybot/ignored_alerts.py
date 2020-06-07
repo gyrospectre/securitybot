@@ -5,8 +5,6 @@ import pytz
 from datetime import timedelta, datetime
 from typing import Dict
 
-from securitybot.db.database import BaseDbClient
-
 
 def __update_ignored_list(dbclient) -> None:
     # type: () -> None

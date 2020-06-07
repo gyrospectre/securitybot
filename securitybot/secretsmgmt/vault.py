@@ -34,4 +34,14 @@ class SecretsClient(BaseSecretsClient):
     def get_secret(self, secret):
         read_response = self._client.secrets.kv.read_secret_version(path=secret)
 
-        return read_response
+        return read_response['data']['data']
+
+    def create_secret(self, name, value, description=None):
+        create_response = self._client.secrets.kv.v2.create_or_update_secret(
+            path=name,
+            secret=value
+        )
+        logging.debug("Wrote secret to path {}".format(name))
+        if create_response['warnings'] is not None:
+            logging.debug('with warnings {}'.format(create_response['warnings']))
+

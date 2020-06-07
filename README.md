@@ -21,19 +21,28 @@ vagrant up
 ```
 Vagrant will spin up an Ubuntu VM, install and configure MySQL, and install python deps. 
 
-Next, run the Vault init helper, which will spin up a Vault dev instance (in Docker), and prompt you for
-your creds to store away safely.
+Next, choose where you want to store your secrets. Yes, that's right, no more secrets in cleartext! We are security professionals after all!
+
+If you'd like to use AWS Secrets Manager, make sure you have created a specific IAM user with minimal perms (Permission group "SecretsManagerReadWrite"
+is all that is needed) and creds loaded into your dev environment. See [this AWS guide][awscreds] if you need a hand.
+
+If you'd like to use Hashicorp Vault instead, and don't have a test instance, you can spin up a local dev instance (in Docker) on your vagrant box
+using the helpful helping helper script:
 ```
 vagrant ssh
 cd /vagrant/vault
 source run.sh
 ```
-Now, populate `config/bot.yaml` with your Slack reporting_channel (see Slack section below) at a minimum, and then run your bot!
-You can specify other auth/db/chat clients to use at this stage, if you want. Use an auth provider of "nullauth" if you don't 
-have something else like Okta handy - this auth client will just respond with a true response regardless of call.
+Now, populate `config/bot.yaml` with your Slack reporting_channel (see Slack section below), secrets, chat and database providers, and optionally, 
+an MFA provider if you have one handy. If not, use the "nullauth" provider, which will just respond with a true response regardless of call and let
+you play around initially without too much effort. Then, run the init script to enter your secrets to be stored and used by SecurityBot.
 ```
 cd /vagrant
 vi config/bot.yaml
+python3 init-secrets.py
+```
+Then, finally, you can run your bot!
+```
 python3 main.py
 ```
 When done, you can ditch your vagrant dev box.
@@ -69,9 +78,9 @@ Okta support has been added, building on [Chandler Newby][mew1033]'s initial wor
 console, and add it and the base url (in the form https://{org name}.okta.com) to `config/bot.yaml`.
 
 ### Secrets Management
-Friends don't let friends store clear-text passwords in code! The base setup now stores all secrets in Hashicorp Vault instead of the config files, as it did in the 
-original SecurityBot. Support for AWS Secrets Manager will also be added shortly. If you want to update your secrets after initial install, you can use the handy
-helper script in `vault/init.py`.
+Friends don't let friends store clear-text passwords in code! The base setup now stores all secrets in either Hashicorp Vault or AWS Secrets Manager instead of 
+the config files, as it did in the original SecurityBot. If you want to update your secrets after initial install, you can use the handy helper script
+in `init-secrets.py`.
  
 ### Running the bot
 Take a look at the provided `main.py` in the root directory for an example on how to use all of these.
@@ -163,3 +172,4 @@ limitations under the License.
 [algolia]: https://github.com/algolia/securitybot "algolia"
 [db-orig]: https://github.com/dropbox/securitybot "Dropbox Security Bot" 
 [mew1033]: https://github.com/mew1033/securitybot "mew1033"
+[awscreds]: https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html "AWS Credential Files"
