@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+  dev:
+    network_mode: "bridge"
+    image: "vault:latest"
+    cap_add:
+      - IPC_LOCK
+    environment:
+      - "VAULT_DEV_ROOT_TOKEN_ID=${VAULT_TOKEN_ID}"
+    ports:
+      - 8200:8200

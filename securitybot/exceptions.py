@@ -15,3 +15,6 @@ class AuthException(Exception):
 
 class DbException(Exception):
     pass
+
+class SecretsException(Exception):
+    pass

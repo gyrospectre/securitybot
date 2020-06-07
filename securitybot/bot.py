@@ -16,7 +16,10 @@ from re import sub
 from securitybot import loader
 
 from securitybot.user import User
+
 from securitybot.blacklist import Blacklist
+
+from securitybot.exceptions import SecretsException
 
 import securitybot.commands as bot_commands
 
@@ -74,7 +77,6 @@ class SecurityBot(object):
             config_path (str): Path to configuration file
         '''
         logging.info('Creating securitybot.')
-
         self._last_task_poll = datetime.min.replace(tzinfo=pytz.utc)
         self._last_report = datetime.min.replace(tzinfo=pytz.utc)
         self._task_poll_time = timedelta(seconds=int(config['bot']['timers']['task_poll_time']))
@@ -84,25 +86,14 @@ class SecurityBot(object):
         self._escalation_time_mins = config['bot']['time']['escalation_time_mins']
         self._backoff_time_hrs = config['bot']['time']['backoff_time_hrs']
 
-        # Connect to the chosen providers
-        auth_provider = config['auth']['provider']
-        db_provider = config['database']['provider']
-        chat_provider = config['chat']['provider']
+        self._config = config
 
-        self._dbclient = loader.build_db_client(
-            db_provider=db_provider,
-            connection_config=config['database'][db_provider]
-        )
-        self._authclient = loader.build_auth_client(
-            auth_provider=auth_provider,
-            connection_config=config['auth'][auth_provider],
-            reauth_time=config['auth']['reauth_time'],
-            auth_attrib=config['auth']['auth_attrib']
-        )
-        self._chatclient = loader.build_chat_client(
-            chat_provider=chat_provider,
-            connection_config=config['chat'][chat_provider]
-        )
+        # Load our secrets from the chosen secrets manager
+        self._init_secrets()
+
+        # Connect to the chosen auth/db/chat providers
+        self._init_providers()
+
         self.tasker = loader.build_tasker(self._dbclient)
 
         self._import_commands(
@@ -129,6 +120,43 @@ class SecurityBot(object):
         self.recover_in_progress_tasks()
 
         logging.info('Done!')
+
+    def _init_secrets(self):
+        # Load our secrets
+        secrets_provider = self._config['secretsmgmt']['provider']
+
+        self._secretsclient = loader.build_secrets_client(
+            secrets_provider=secrets_provider,
+            connection_config=self._config['secretsmgmt'][secrets_provider]
+        )
+        try:
+            loader.add_secrets_to_config(
+                smclient=self._secretsclient,
+                secrets=self._config['secretsmgmt']['secrets'],
+                config=self._config
+            )
+        except:
+            raise SecretsException('Failed to load secrets!')
+
+    def _init_providers(self):
+        auth_provider = self._config['auth']['provider']
+        db_provider = self._config['database']['provider']
+        chat_provider = self._config['chat']['provider']
+
+        self._dbclient = loader.build_db_client(
+            db_provider=db_provider,
+            connection_config=self._config['database'][db_provider]
+        )
+        self._authclient = loader.build_auth_client(
+            auth_provider=auth_provider,
+            connection_config=self._config['auth'][auth_provider],
+            reauth_time=self._config['auth']['reauth_time'],
+            auth_attrib=self._config['auth']['auth_attrib']
+        )
+        self._chatclient = loader.build_chat_client(
+            chat_provider=chat_provider,
+            connection_config=self._config['chat'][chat_provider]
+        )
 
     def _import_commands(self, config) -> None:
         '''

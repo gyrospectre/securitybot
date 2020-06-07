@@ -1,7 +1,7 @@
 import logging
 
+from securitybot import loader
 from securitybot.bot import SecurityBot
-from securitybot.config import Config
 
 
 def main():
@@ -11,8 +11,7 @@ def main():
     logging.getLogger('requests').setLevel(logging.WARNING)
     logging.getLogger('usllib3').setLevel(logging.WARNING)
 
-    config = Config()
-    config.load_config('config/bot.yaml')
+    config = loader.load_yaml('config/bot.yaml')
 
     # Try and create a bot instance
     try:

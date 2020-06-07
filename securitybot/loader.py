@@ -1,5 +1,6 @@
 import yaml
 import json
+import logging
 
 from importlib import import_module
 
@@ -9,10 +10,56 @@ from securitybot.chat.chat import BaseChatClient
 
 from securitybot.db.database import BaseDbClient
 
+from securitybot.secretsmgmt.secretsmgmt import BaseSecretsClient
+
 from securitybot.tasker import Tasker
 
 from securitybot.exceptions import InvalidAuthProvider
 
+
+def load_secrets_client(secrets_provider):
+    try:
+        sanitized_provider = secrets_provider.lower()
+        module_name = 'securitybot.secretsmgmt.{}'.format(
+            sanitized_provider
+        )
+        module = import_module(module_name)
+        client = getattr(module, 'SecretsClient')
+
+        if not issubclass(client, BaseSecretsClient):
+            raise AttributeError(
+                '{}.Client is not an SecretsClient Provider'.format(module_name)
+            )
+
+        return client
+    except (ModuleNotFoundError, AttributeError) as e:
+        raise InvalidAuthProvider(
+            'Secrets Management Provider for "{}" is not available: {}'.format(
+                secrets_provider, e
+            )
+        )
+
+def build_secrets_client(secrets_provider, connection_config):
+    secrets_class = load_secrets_client(secrets_provider)
+
+    return secrets_class(
+        connection_config
+    )
+
+def add_secrets_to_config(smclient, secrets, config):
+    for secret_cat,secret_types in secrets.items():
+        for secret_type,secret_names in secret_types.items():
+            secrets_raw = smclient.get_secret(
+                'securitybot/{}/{}'.format(
+                    secret_cat,
+                    secret_type
+                )
+            )
+            for secret_name in secret_names:
+                config[secret_cat][secret_type][secret_name] = secrets_raw['data']['data'][secret_name]
+    return True
+
+    return False
 
 def load_auth_client(auth_provider):
     try:

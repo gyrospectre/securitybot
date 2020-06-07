@@ -9,21 +9,21 @@ from securitybot.auth.auth import BaseAuthClient, AuthStates
 
 class AuthClient(BaseAuthClient):
 
-    def __init__(self, connection_config, username="") -> None:
+    def __init__(self, connection_config, reauth_time, auth_attrib) -> None:
         pass
 
-    def can_auth(self) -> bool:
+    def can_auth(self, user) -> bool:
         return False
 
-    def auth(self, reason: str=None) -> None:
+    def auth(self, user, reason: str=None) -> None:
         pass
 
-    def _recently_authed(self) -> str:
+    def _recently_authed(self, user) -> str:
         # type: () -> bool
         return AuthStates.AUTHORIZED
 
-    def auth_status(self) -> bool:
+    def auth_status(self, user) -> bool:
         return True
 
-    def reset(self) -> None:
+    def reset(self, user) -> None:
         pass
