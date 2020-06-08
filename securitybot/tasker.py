@@ -65,17 +65,21 @@ class Task(object):
         Args:
             status (int): The new status to use.
         '''
-        self._dbclient.execute(self._dbclient.queries['set_status'], (status, self.hash))
+        self._dbclient.execute('set_status', (status, self.hash))
 
     def _set_response(self):
         # type: () -> None
         '''
         Updates the user response for this task.
         '''
-        self._dbclient.execute(self._dbclient.queries['set_response'], (self.comment,
-                                                                    self.performed,
-                                                                    self.authenticated,
-                                                                    self.hash))
+        self._dbclient.execute('set_response', 
+            (
+                self.comment,
+                self.performed,
+                self.authenticated,
+                self.hash
+            )
+        )
 
     def set_open(self):
         self._set_status(StatusLevel.OPEN.value)
@@ -106,7 +110,7 @@ class Tasker(object):
         Returns:
             List of SQLTasks.
         '''
-        alerts = self._dbclient.execute(self._dbclient.queries['get_alerts'], (level,))
+        alerts = self._dbclient.execute('get_alerts', (level,))
         return [Task(*alert, dbclient=self._dbclient) for alert in alerts]
 
     def get_new_tasks(self):

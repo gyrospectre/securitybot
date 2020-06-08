@@ -17,7 +17,10 @@ from typing import Any, Dict, List
 
 from securitybot.user import User
 
-from securitybot.chat.chat import BaseChatClient, ChatException
+from securitybot.chat.chat import BaseChatClient
+
+from securitybot.exceptions import ChatException 
+
 
 class ChatClient(BaseChatClient):
     '''

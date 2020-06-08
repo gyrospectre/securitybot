@@ -44,7 +44,7 @@ class DbClient(BaseDbClient):
                                      db=self._db)
         self._cursor = self._conn.cursor()
 
-    def execute(self, query: str, params: Sequence=None):
+    def execute(self, query_ref: str, params: Sequence=None):
         # type: (str, Sequence[Any]) -> Sequence[Sequence[Any]]
         '''
         Executes a given SQL query with some possible params.
@@ -55,6 +55,7 @@ class DbClient(BaseDbClient):
         Returns:
             Tuple[Tuple[str]]: The output from the SQL query.
         '''
+        query = self.queries[query_ref]
         if params is None:
             params = ()
         try:

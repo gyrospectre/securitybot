@@ -74,9 +74,9 @@ def create_new_alert(dbclient, title, ldap, description, reason, url='N/A', key=
         key = binascii.hexlify(os.urandom(32))
 
     # Insert that into the database as a new alert
-    dbclient.execute(dbclient.queries['new_alert_alerts'],
+    dbclient.execute('new_alert_alerts',
                       (key, ldap, title, description, reason, url))
 
-    dbclient.execute(dbclient.queries['new_alert_user_response'], (key,))
+    dbclient.execute('new_alert_user_response', (key,))
 
-    dbclient.execute(dbclient.queries['new_alert_status'], (key, StatusLevel.OPEN.value))
+    dbclient.execute('new_alert_status', (key, StatusLevel.OPEN.value))

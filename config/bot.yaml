@@ -23,6 +23,12 @@ secretsmgmt:
       mysql:
         - user
         - password
+    auth:
+      okta:
+        - token
+      duo:
+        - ikey
+        - skey
 
   vault:
     token_env: 'VAULT_TOKEN_ID'
@@ -31,12 +37,14 @@ secretsmgmt:
 
 database:
   # How state will be maintained
-  # Supported: MySQL (mysql)
-  provider: mysql
+  # Supported: MySQL (mysql), AWS SimpleDB (awssimpledb)
+  provider: awssimpledb
   mysql:
     host: 127.0.0.1
     db: securitybot
     queries_path: config/queries/mysql.yaml
+  awssimpledb:
+    domain_prefix: secbot
 
 auth:
   # How we will use MFA to authenticate users

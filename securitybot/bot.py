@@ -135,8 +135,10 @@ class SecurityBot(object):
                 secrets=self._config['secretsmgmt']['secrets'],
                 config=self._config
             )
-        except:
-            raise SecretsException('Failed to load secrets!')
+        except Exception as error:
+            raise SecretsException(
+                'Failed to load secrets! {}'.format(error)
+            )
 
     def _init_providers(self):
         auth_provider = self._config['auth']['provider']

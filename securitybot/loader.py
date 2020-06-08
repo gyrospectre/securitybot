@@ -1,5 +1,4 @@
 import yaml
-
 import logging
 
 from importlib import import_module
@@ -14,7 +13,7 @@ from securitybot.secretsmgmt.secretsmgmt import BaseSecretsClient
 
 from securitybot.tasker import Tasker
 
-from securitybot.exceptions import InvalidAuthProvider, InvalidChatProvider, InvalidDatabaseProvider, InvalidSecretsProvider 
+from securitybot.exceptions import InvalidAuthProvider, InvalidChatProvider, InvalidDatabaseProvider, InvalidSecretsProvider
 
 
 def load_secrets_client(secrets_provider):
@@ -47,69 +46,28 @@ def build_secrets_client(secrets_provider, connection_config):
     )
 
 def add_secrets_to_config(smclient, secrets, config):
-    for secret_cat,secret_types in secrets.items():
-        for secret_type,secret_names in secret_types.items():
+    for client_type,clients in secrets.items():
+        client = config[client_type]['provider']
+
+        if client in clients:
             logging.debug(
                 "About to fetch secret 'securitybot/{}/{}'".format(
-                    secret_cat,
-                    secret_type
-                    )
+                    client_type,
+                    client
                 )
+            )
             secrets_raw = smclient.get_secret(
                 'securitybot/{}/{}'.format(
-                    secret_cat,
-                    secret_type
+                    client_type,
+                    client
                 )
             )
-            for secret_name in secret_names:
-                config[secret_cat][secret_type][secret_name] = secrets_raw[secret_name]
+            for secret_name in secrets[client_type][client]:
+                config[client_type][client][secret_name] = secrets_raw[secret_name]
+        else:
+            logging.debug('No secrets for {} provider {}'.format(client_type,client))
+
     return True
-
-    return False
-
-def load_secrets_client(secrets_provider):
-    try:
-        sanitized_provider = secrets_provider.lower()
-        module_name = 'securitybot.secretsmgmt.{}'.format(
-            sanitized_provider
-        )
-        module = import_module(module_name)
-        client = getattr(module, 'SecretsClient')
-
-        if not issubclass(client, BaseSecretsClient):
-            raise AttributeError(
-                '{}.Client is not an SecretsClient Provider'.format(module_name)
-            )
-
-        return client
-    except (ModuleNotFoundError, AttributeError) as e:
-        raise InvalidAuthProvider(
-            'Secrets Management Provider for "{}" is not available: {}'.format(
-                secrets_provider, e
-            )
-        )
-
-def build_secrets_client(secrets_provider, connection_config):
-    secrets_class = load_secrets_client(secrets_provider)
-
-    return secrets_class(
-        connection_config
-    )
-
-def add_secrets_to_config(smclient, secrets, config):
-    for secret_cat,secret_types in secrets.items():
-        for secret_type,secret_names in secret_types.items():
-            secrets_raw = smclient.get_secret(
-                'securitybot/{}/{}'.format(
-                    secret_cat,
-                    secret_type
-                )
-            )
-            for secret_name in secret_names:
-                config[secret_cat][secret_type][secret_name] = secrets_raw['data']['data'][secret_name]
-    return True
-
-    return False
 
 def load_auth_client(auth_provider):
     try:
@@ -201,8 +159,11 @@ def build_db_client(db_provider, connection_config):
 
     return db_class(
         config=connection_config,
-        queries=load_yaml(connection_config['queries_path']) 
+        queries=load_yaml(connection_config.get('queries_path',None))
     )
 
 def load_yaml(path):
-    return yaml.safe_load(open(path))
+    if path:
+        return yaml.safe_load(open(path))
+    else:
+        return None

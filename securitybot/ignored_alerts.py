@@ -11,8 +11,7 @@ def __update_ignored_list(dbclient) -> None:
     '''
     Prunes the ignored table of old ignored alerts.
     '''
-    if dbclient.queries.get('update_ignored_list', False):
-        dbclient.execute(dbclient.queries['update_ignored_list'])
+    dbclient.execute('update_ignored_list')
 
 
 def get_ignored(dbclient, username: str) -> Dict[str, str]:
@@ -26,7 +25,7 @@ def get_ignored(dbclient, username: str) -> Dict[str, str]:
         Dict[str, str]: A mapping of ignored alert titles to reasons
     '''
     __update_ignored_list(dbclient)
-    rows = dbclient.execute(dbclient.queries['get_ignored'], (username,))
+    rows = dbclient.execute('get_ignored', (username,))
     return {row[0]: row[1] for row in rows}
 
 
@@ -44,5 +43,5 @@ def ignore_task(dbclient, username: str, title: str, reason: str, ttl: timedelta
     '''
     expiry_time = datetime.now(tz=pytz.utc) + ttl
     # NB: Non-standard MySQL specific query
-    dbclient.execute(dbclient.queries['ignore_task'],
+    dbclient.execute('ignore_task',
                        (username, title, reason, expiry_time.strftime('%Y-%m-%d %H:%M:%S')))

@@ -22,9 +22,15 @@ class SecretsClient(BaseSecretsClient):
         Args:
             connection_config (Dict): Parameters required to connect to the Vault
         '''
+        try:
+            token = os.environ[connection_config['token_env']]
+        except KeyError as error:
+            raise SecretsException(
+                'Token environment variable missing: {}'.format(error)
+            )
         self._client = Client(
             url=connection_config['url'],
-            token=os.environ[connection_config['token_env']]
+            token=token
         )
         if not self._client.is_authenticated():
             raise SecretsException('Vault client authentication failed!')
