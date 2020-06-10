@@ -73,83 +73,169 @@ class DbClient(BaseDbClient):
         )
 
         return response
-    
-    def _select(self, expression):
-        response = self._client.select(
-            SelectExpression=expression,
-            ConsistentRead=True
-        )
+
+    def _format_response(self, dictofdict, fields, timefields=[], boolfields=[]):
+        #first value is the primary key
+        response = []
+        for k,v in dictofdict.items():
+            line = []
+            line.append(k)
+            for field in fields[1:]:
+                if field in timefields:
+                    line.append(
+                        datetime.strptime(dictofdict[k][field], TIME_FORMAT)
+                    )
+                elif field in boolfields:
+                    line.append(bool(dictofdict[k][field]))
+                else:
+                    line.append(dictofdict[k][field])
+
+            response.append(line)
+
         return response
-    
+
+    def _items_to_dict(self, items):
+        # {
+        #   'itemname1': {
+        #       'aname': 'ldap',
+        #       'avalue': 'username1'
+        #   },
+        #   'itemname2': {
+        #       'aname': 'hash',
+        #       'avalue': '1234abcd'
+        #   }
+        # }
+        dictofdicts = {}
+        try:
+            for item in items['Items']:
+                itemdict = {}
+                for attrib in item['Attributes']:
+                    itemdict[attrib['Name']] = attrib['Value']
+
+                dictofdicts[item['Name']] = itemdict
+
+        except KeyError:
+            # No items to fetch
+            pass
+
+        return dictofdicts        
+
+    def _dict_to_items(self, attribdict):
+        attribs=[] #list of dicts, with the dict the attribs
+        items=[] #list of item names
+        for item,values in attribdict.items():
+            items.append(item)
+            attrib_entry=[]
+            for key, value in values.items():
+                attrib_entry.append(
+                    {
+                        'Name': key,
+                        'Value': str(value),
+                    }
+                )
+            attribs.append(attrib_entry)
+        print('here 5 {} {}'.format(items, attribs))
+        return items, attribs
+
+    def _select(self, fields, table, where=""):
+ 
+        if where != '':
+            append =  ' where {}'.format(where)
+        else:
+            append = ''
+
+        rows = self._client.select(
+            SelectExpression="select {} from `{}.{}`".format(
+                fields,
+                self._domain_prefix,
+                table,
+                append
+            ),
+            ConsistentRead=True         
+        )
+        print('here: {}'.format(self._items_to_dict(rows)))
+        return self._items_to_dict(rows)
+
+    def _delete(self, fields, table, where=""):
+ 
+        rows = self._select(
+            fields=fields,
+            table=table,
+            where=where
+        )
+
+        item = str(uuid.uuid4())
+        fields = ['ldap', 'title', 'reason', 'until']
+        attribs=[]
+        for index, value in enumerate(params):
+            attribs.append(
+                {
+                    'Name': fields[index],
+                    'Value': str(value),
+                    'Replace': True
+                }
+            )
+
+        self._client.put_attributes(
+        
+            DomainName=domain,
+            ItemName=item,
+            Attributes=attribs
+        )
+
+        rows = self._client.select(
+            SelectExpression="select {} from `{}.{}`".format(
+                fields,
+                self._domain_prefix,
+                table,
+                append
+            ),
+            ConsistentRead=True         
+        )
+        return self._items_to_dict(rows)
+        
+
     def _update_ignored_list(self, params=None):
         '''
         DELETE FROM ignored WHERE until <= NOW()
         '''
         now = datetime.now(tz=pytz.utc).strftime(TIME_FORMAT)
+
         ignored = self._select(
-            expression="select * from `{}.ignored` where until <= '{}'".format(
-                self._domain_prefix,
-                now
-                )
+            fields='*',
+            table='ignored',
+            where="until <= '{}'".format(now)
+        )
+        ignored_items, item_attribs = self._dict_to_items(ignored)
+        print('here4: {}'.format(ignored_items))
+        for idx, item in enumerate(ignored_items):
+            self._client.delete_attributes(
+                ItemName=item,
+                Attributes=item_attribs[idx],
+                DomainName='{}.ignored'.format(self._domain_prefix)
             )
-
-        # Get old ignoredalerts
-        to_delete={}
-        try:
-            for alert in ignored['Items']:
-                to_delete[alert['Name']] = {}
-
-                for item in alert['Attributes']:
-                    to_delete[alert['Name']][item['Name']] = item['Value']
-
-        except KeyError:
-            # No ignored alerts to delete
-            return
-
-        for item, v in to_delete.items():
-            attribs=[]
-            for name, value in v.items():
-                attribs.append(
-                    {
-                        'Name': name,
-                        'Value': str(value),
-                        'Replace': True
-                    }
-                )
-            self._put_attribs(
-                item=item,
-                attribs=attribs,
-                domain='{}.ignored'.format(self._domain_prefix)
-            )
-            logging.debug('Removed {} from ignored list.'.format(item))
+        logging.debug('Removed {} items from ignored list.'.format(len(ignored_items)))
 
     def _get_ignored(self, params):
         '''
         SELECT title, reason FROM ignored WHERE ldap = %s
         '''
+
         ignored = self._select(
-            expression="select * from `{}.ignored` where ldap = '{}'".format(
-                self._domain_prefix,
-                params[0]
-                )
-            )
-        final = {}
-        # Get ignored alerts
-        try:
-            for alert in ignored['Items']:
-                for item in alert['Attributes']:
-                    final[item['Name']] = item['Value']
-        except KeyError:
-            # No alerts to fetch
-            logging.debug('No ignored alerts found for user {}'.format(params[0]))
-            return []
+            fields='*',
+            table='ignored',
+            where="ldap = '{}'".format(params[0])
+        )
 
-        logging.debug('Got ignored alert {} for user {}'.format(final['title'], params[0]))
+        ignored_list = self._format_response(
+            dictofdict=ignored,
+            fields=['ldap','title', 'reason'],
+        )
 
-        return ((
-            final['title'],
-            final['reason'],
-        ), )
+        if len(ignored_list) > 0:
+            logging.debug('Got ignored alerts for user {}'.format(params[0]))
+
+        return ignored_list
 
     def _ignore_task(self, params):
         '''
@@ -168,7 +254,6 @@ class DbClient(BaseDbClient):
                     'Replace': True
                 }
             )
-        print("here: {}".format(params))
         self._put_attribs(
             item=item,
             attribs=attribs,
@@ -306,51 +391,41 @@ class DbClient(BaseDbClient):
         JOIN alert_status ON alerts.hash = alert_status.hash
         WHERE status = %s
         '''
-        alerts = self._select(
-            expression='select * from `{}.alerts`'.format(self._domain_prefix))
-        user_responses = self._select(
-            expression='select * from `{}.user_responses`'.format(self._domain_prefix))
-        alert_status = self._select(
-            expression='select * from `{}.alert_status`'.format(self._domain_prefix))
+        alerts = self._select(fields='*', table='alerts')
+        user_responses = self._select(fields='*', table='user_responses')
+        alert_status = self._select(fields='*', table='alert_status')
 
-        finalalert={}
-        # Get alerts
-        try:
-            for alert in alerts['Items']:
-                finalalert['hash'] = alert['Name']
+        print(alerts)
+        # Join responses and status to alerts
+        for k,v in user_responses.items():
+            if k in alerts:
+                for attrib,value in v.items():
+                    alerts[k][attrib] = value
+        for k,v in alert_status.items():
+            if k in alerts:
+                for attrib,value in v.items():
+                    alerts[k][attrib] = value
 
-                for item in alert['Attributes']:
-                    finalalert[item['Name']] = item['Value']
-        except KeyError:
-            # No alerts to fetch
-            return []
+        return self._format_response(
+            dictofdict=alerts,
+            fields=['hash','title', 'ldap', 'reason', 'description', 'url', 'event_time', 'performed', 'comment', 'authenticated', 'status'],
+            timefields=['event_time'],
+            boolfields=['status']
+        )
 
-        # Add User Responses
-        for response in user_responses['Items']:
-            if response['Name'] == finalalert['hash']:
-                for item in response['Attributes']:
-                    finalalert[item['Name']] = item['Value']
-
-        # Add Alert statuses
-        for status in alert_status['Items']:
-            if status['Name'] == finalalert['hash']:
-                for item in status['Attributes']:
-                    finalalert[item['Name']] = item['Value']
-
-        
-        return ((
-            finalalert['hash'],
-            finalalert['title'],
-            finalalert['ldap'],
-            finalalert['reason'],
-            finalalert['description'],
-            finalalert['url'],
-            datetime.strptime(finalalert['event_time'], TIME_FORMAT),
-            finalalert['performed'],
-            finalalert['comment'],
-            finalalert['authenticated'],
-            bool(finalalert['status'])
-        ), )
+#        return ((
+#            finalalert['hash'],
+#            finalalert['title'],
+#            finalalert['ldap'],
+#            finalalert['reason'],
+#            finalalert['description'],
+#            finalalert['url'],
+#            #datetime.strptime(finalalert['event_time'], TIME_FORMAT),
+#            finalalert['performed'],
+#            finalalert['comment'],
+#            finalalert['authenticated'],
+#            bool(finalalert['status'])
+#        ), )
 
     def _set_status(self, params=None):
         '''
