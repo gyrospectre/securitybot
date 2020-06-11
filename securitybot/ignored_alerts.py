@@ -5,6 +5,8 @@ import pytz
 from datetime import timedelta, datetime
 from typing import Dict
 
+TIME_FORMAT = '%Y-%m-%dT%H:%M:%S%z'
+
 
 def __update_ignored_list(dbclient) -> None:
     # type: () -> None
@@ -42,6 +44,7 @@ def ignore_task(dbclient, username: str, title: str, reason: str, ttl: timedelta
         msg (str): An optional string specifying why an alert was ignored
     '''
     expiry_time = datetime.now(tz=pytz.utc) + ttl
+
     # NB: Non-standard MySQL specific query
     dbclient.execute('ignore_task',
-                       (username, title, reason, expiry_time.strftime('%Y-%m-%d %H:%M:%S')))
+                       (username, title, reason, expiry_time.strftime(TIME_FORMAT)))
