@@ -1,5 +1,5 @@
 '''
-A wrapper for the securitybot use AWS SimpleDB for it's database.
+A wrapper for securitybot to use AWS SimpleDB for it's database.
 '''
 __author__ = 'Bill Mahony'
 
@@ -228,7 +228,6 @@ class DbClient(BaseDbClient):
         '''
         SELECT title, reason FROM ignored WHERE ldap = %s
         '''
-
         ignored = self._select(
             fields='*',
             table='ignored',
@@ -297,7 +296,11 @@ class DbClient(BaseDbClient):
         '''
         INSERT INTO blacklist (ldap) VALUES (%s)
         '''
-        fields = ['ldap']
+        fields = ['ldap', 'blacklist_time']
+        # Add a timestamp
+        params = list(params)
+        params.append(datetime.now(tz=pytz.utc).strftime(TIME_FORMAT))
+
         items, attribs = self._params_to_items(
             fieldnames=fields,
             values=params,
