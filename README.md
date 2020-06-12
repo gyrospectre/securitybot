@@ -54,6 +54,9 @@ vagrant destroy
 Ew. Ewww. Keeping SQL for the time being but this will go soon. Please, please do not deploy this to prod as is. It uses the root user, 
 and has a stupid password. Not spending time hardening this, as again, it will go soon.
 
+### AWS SimpleDB
+A much better alternative to MySQL is AWS SDB, which is now supported. The provider acts as a SQL -> KV interpreter, so allows seamless switching between the database providers as needed.
+
 ### Slack
 You'll need a token to be able to integrate with Slack.
 The best thing to do would be to [create a new Slack app][bot-user] and use that token for Securitybot. You'll need a "Classic App" for the time
