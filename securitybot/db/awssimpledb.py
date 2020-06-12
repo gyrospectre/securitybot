@@ -219,7 +219,7 @@ class DbClient(BaseDbClient):
             )
             return True
         else:
-            logging.error('Could no remove {} items from ignored list.'.format(
+            logging.error('Could not remove {} items from ignored list.'.format(
                 len(ignored_items))
             )
             return False
