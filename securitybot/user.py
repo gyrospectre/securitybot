@@ -1,6 +1,7 @@
 '''
 An object to manage user interactions.
-Wraps user information, all known alerts, and an active DM channel with the user.
+Wraps user information, all known alerts, and an
+active DM channel with the user.
 '''
 __author__ = 'Alex Bertsch'
 __email__ = 'abertsch@dropbox.com'
@@ -72,13 +73,15 @@ class User(object):
                 'dest': 'action_performed_check',
                 'condition': self._has_tasks
             },
-            # Finish task if user says action was performed and recently authorized
+            # Finish task if user says action was
+            # performed and recently authorized
             {
                 'source': 'action_performed_check',
                 'dest': 'task_finished',
                 'condition': self._already_authed,
             },
-            # Finish task if user says action was performed and no 2FA capability exists
+            # Finish task if user says action was performed
+            # and no 2FA capability exists
             {
                 'source': 'action_performed_check',
                 'dest': 'task_finished',
@@ -131,7 +134,8 @@ class User(object):
                 'dest': 'task_finished',
                 'condition': self._auth_completed,
             },
-            # Go to the first needed task, possibly quitting, when task is completed
+            # Go to the first needed task, possibly quitting,
+            # when task is completed
             {
                 'source': 'task_finished',
                 'dest': 'need_task',
@@ -152,8 +156,14 @@ class User(object):
             'task_finished': self._complete_task,
         }
 
-        self._fsm = StateMachine(states, transitions, 'need_task', during=during, on_enter=on_enter,
-                                 on_exit=on_exit)
+        self._fsm = StateMachine(
+            states,
+            transitions,
+            'need_task',
+            during=during,
+            on_enter=on_enter,
+            on_exit=on_exit
+        )
 
     def __getitem__(self, key):
         '''
@@ -182,7 +192,10 @@ class User(object):
         Checks if the user performed the last action and
         if they are already authorized.
         '''
-        return self._performed_action() and self.auth_status() == AuthStates.AUTHORIZED
+        return (
+            self._performed_action() and
+            self.auth_status() == AuthStates.AUTHORIZED
+        )
 
     def _cannot_2fa(self):
         # type: () -> bool
@@ -201,7 +214,13 @@ class User(object):
     def _slow_response_time(self):
         # type: () -> bool
         '''Returns true if the user has taken a long time to respond.'''
-        return datetime.now(tz=pytz.utc) > (self.pending_task.event_time + timedelta(minutes=self._bot._escalation_time_mins))
+        return (
+            datetime.now(tz=pytz.utc) > (
+                self.pending_task.event_time + timedelta(
+                    minutes=self._bot._escalation_time_mins
+                )
+            )
+        )
 
     def _allows_authorization(self):
         # type: () -> bool
@@ -216,7 +235,10 @@ class User(object):
     def _auth_completed(self):
         # type: () -> bool
         '''Checks if authentication has been completed.'''
-        return self._last_auth is AuthStates.AUTHORIZED or self._last_auth is AuthStates.DENIED
+        return (
+            self._last_auth is AuthStates.AUTHORIZED or
+            self._last_auth is AuthStates.DENIED
+        )
 
     # State actions
 
@@ -225,8 +247,9 @@ class User(object):
         '''Marks the current task as needing verification and moves on.'''
         logging.info('Silently escalating {0} for {1}'
                      .format(self.pending_task.description, self['name']))
-        # Append in the case that this is called when waiting for auth permission
-        self.pending_task.comment += 'Automatically escalated. No response received.'
+        # Append in the case that this is called
+        # when waiting for auth permission
+        self.pending_task.comment += 'Auto escalated. No response received.'
         self.pending_task.set_verifying()
         self._escalation_time = datetime.max.replace(tzinfo=pytz.utc)
         self.send_message('no_response')
@@ -249,11 +272,14 @@ class User(object):
             comment = '\n'.join('> ' + s for s in comment.split('\n'))
             self._bot._chatclient.send_message(
                 self._bot._chatclient.reporting_channel,
-                self._bot.messages['report'].format(username=self['name'],
-                                                      title=self.pending_task.title,
-                                                      description=self.pending_task.description,
-                                                      comment=comment,
-                                                      url=self.pending_task.url))
+                self._bot.messages['report'].format(
+                    username=self['name'],
+                    title=self.pending_task.title,
+                    description=self.pending_task.description,
+                    comment=comment,
+                    url=self.pending_task.url
+                )
+            )
 
     def _act_on_denied_mfa(self):
         # type: () -> None
@@ -270,11 +296,14 @@ class User(object):
             comment = '\n'.join('> ' + s for s in comment.split('\n'))
             self._bot._chatclient.send_message(
                 self._bot._chatclient.reporting_channel,
-                self._bot.messages['report'].format(username=self['name'],
-                                                      title=self.pending_task.title,
-                                                      description=self.pending_task.description,
-                                                      comment=comment,
-                                                      url=self.pending_task.url))
+                self._bot.messages['report'].format(
+                    username=self['name'],
+                    title=self.pending_task.title,
+                    description=self.pending_task.description,
+                    comment=comment,
+                    url=self.pending_task.url
+                )
+            )
 
     # Exit actions
 
@@ -363,13 +392,19 @@ class User(object):
     def _update_tasks(self):
         # type: () -> None
         '''
-        Updates the user's stored list of tasks, removing all of those that should be ignored.
+        Updates the user's stored list of tasks, removing
+        all of those that should be ignored.
         '''
         ignored = ignored_alerts.get_ignored(self._dbclient, self['name'])
         cleaned_tasks = []
         for task in self.tasks:
             if task.title in ignored:
-                logging.info('Ignoring task {0} for {1}'.format(task.title, self['name']))
+                logging.info(
+                    'Ignoring task {0} for {1}'.format(
+                        task.title,
+                        self['name']
+                    )
+                )
                 task.comment = ignored[task.title]
                 task.set_verifying()
             else:
@@ -460,6 +495,7 @@ class User(object):
                 self._user['profile']['display_name']):
             return self._user['profile']['display_name']
         return False
+
 
 class UserException(Exception):
     pass

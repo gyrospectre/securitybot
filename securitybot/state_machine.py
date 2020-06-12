@@ -23,25 +23,30 @@ class StateMachine(object):
     make for a terrible UI state machine.
     '''
 
-    def __init__(self, states, transitions, initial, during=None, on_enter=None,
-                 on_exit=None):
+    def __init__(self, states, transitions, initial, during=None,
+                 on_enter=None, on_exit=None):
         '''
         Creates a new state machine. The `during`, `on_enter`, and `on_exit`
         dictionaries are all optional. Additionally, each is free to have
         as few or as many of each state as desired, i.e. leaving out states
         is fine.
         Args:
-            states (List[str]): A list of all possible states in the FSM.
-            transitions (List[Dict[str, function]]): Dictionaries of transitions
-                and conditions. Each dictionary must contain the following keys:
-                    source (str): The source state of the transition.
-                    dest (str): The destination state of the transition.
+            states (List[str]):
+                A list of all possible states in the FSM.
+            transitions (List[Dict[str, function]]):
+                Dictionaries of transitions and conditions. Each dictionary
+                must contain the following keys:
+                    source (str):
+                        The source state of the transition.
+                    dest (str):
+                        The destination state of the transition.
                 Each dictionary may contain the following keys:
-                    condition (function): A condition that must be true for the
-                        transition to occur. If no condition is provided then the
-                        state machine will transition on a step.
-                    action (function): A function to be executed while the
-                        transition occurs.
+                    condition (function):
+                        A condition that must be true for the transition to
+                        occur. If no condition is provided then the state
+                        machine will transition on a step.
+                    action (function):
+                        A function to be executed while the transition occurs.
             during (Dict[str, function]): A mapping of states to functions to
                 execute while in that state.
             initial (str): The state to start in.
@@ -59,7 +64,9 @@ class StateMachine(object):
 
         # Build states
         if sorted(list(set(states))) != sorted(states):
-            raise StateMachineException('Duplicate state names encountered:\n{0}'.format(states))
+            raise StateMachineException(
+                'Duplicate state names encountered:\n{0}'.format(states)
+            )
 
         self._states = {}
         for state in states:
@@ -71,7 +78,9 @@ class StateMachine(object):
 
         # Set initial state
         if initial not in self._states:
-            raise StateMachineException('Invalid initial state: {0}'.format(initial))
+            raise StateMachineException(
+                'Invalid initial state: {0}'.format(initial)
+            )
         self.state = self._states[initial]
 
         # Build transitions
@@ -87,21 +96,23 @@ class StateMachine(object):
 
             source_state = self._states[transition['source']]
             dest_state = self._states[transition['dest']]
-            self._transitions[transition['source']].append(Transition(source_state,
-                                                                      dest_state,
-                                                                      transition.get(
-                                                                          'condition', None),
-                                                                      transition.get('action', None)
-                                                                      ))
+            self._transitions[transition['source']].append(
+                Transition(
+                    source_state,
+                    dest_state,
+                    transition.get('condition', None),
+                    transition.get('action', None)
+                )
+            )
 
     def step(self):
         # type: () -> None
         '''
         Performs a step in the state machine.
-        Each step iterates over the current state's `during` function then checks all
-        possible transition paths, evaluates their condition, and transitions if possible.
-        The next state is which transition condition was true first or the current state
-        if no conditions were true.
+        Each step iterates over the current state's `during` function then
+        checks all possible transition paths, evaluates their condition, and
+        transitions if possible. The next state is which transition condition
+        was true first or the current state if no conditions were true.
         '''
         self.state.during()
 

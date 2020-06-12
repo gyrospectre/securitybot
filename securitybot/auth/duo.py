@@ -19,9 +19,11 @@ class AuthClient(BaseAuthCient):
     def __init__(self, connection_config, username="") -> None:
         '''
         Args:
-            connection_config (Dict): Parameters required to connect to the Duo API
-            username (str): The username of the person authorized through
-                            this object.
+            connection_config (Dict):
+                Parameters required to connect tothe Duo API
+            username (str):
+                The username of the person authorized through
+                this object.
         '''
         super().__init__()
         self.client = duo_client.Auth(**connection_config)
@@ -35,7 +37,9 @@ class AuthClient(BaseAuthCient):
         # Use Duo preauth to look for a device with Push
         # TODO: This won't work for anyone who's set to auto-allow, but
         # I don't believe we have anyone like that...
-        logging.debug('Checking auth capabilities for {}'.format(self.username))
+        logging.debug(
+            'Checking auth capabilities for {}'.format(self.username)
+        )
         res = self.client.preauth(username=self.username)
         if res['result'] == 'auth':
             for device in res['devices']:
@@ -43,7 +47,7 @@ class AuthClient(BaseAuthCient):
                     return True
         return False
 
-    def auth(self, reason: str=None) -> None:
+    def auth(self, reason: str = None) -> None:
         logging.debug('Sending Duo Push request for {}'.format(self.username))
         pushinfo = 'from=Securitybot'
         if reason:

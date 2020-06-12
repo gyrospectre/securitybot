@@ -17,7 +17,10 @@ from typing import Any, Dict, List
 
 from securitybot.user import User
 
-from securitybot.chat.chat import BaseChatClient, ChatException
+from securitybot.chat.chat import BaseChatClient
+
+from securitybot.exceptions import ChatException
+
 
 class ChatClient(BaseChatClient):
     '''
@@ -34,13 +37,13 @@ class ChatClient(BaseChatClient):
         self.reporting_channel = connection_config['reporting_channel']
         self.messages = []
         self._token = connection_config['token']
-        
+
         self._slack_web = WebClient(self._token)
         self._validate()
 
         loop = asyncio.new_event_loop()
         thread = threading.Thread(target=self.connect, args=(loop,))
-        thread.start() 
+        thread.start()
 
     def _validate(self) -> None:
         '''Validates Slack API connection.'''
@@ -59,9 +62,6 @@ class ChatClient(BaseChatClient):
             run_async=True,
             loop=loop
         )
-        #loop.run_forever(
-        #    self._slack_rtm.start()
-        #)
         self._slack_rtm.run_on(event="message")(self.get_message)
         loop.run_until_complete(
             self._slack_rtm.start()
@@ -113,8 +113,8 @@ class ChatClient(BaseChatClient):
     def send_message(self, channel: Any, message: str) -> None:
         '''
         Sends some message to a desired channel.
-        As channels are possibly chat-system specific, this function has a horrible
-        type signature.
+        As channels are possibly chat-system specific, this
+        function has a horrible type signature.
         '''
         self._slack_web.chat_postMessage(
             channel=channel,
@@ -124,9 +124,10 @@ class ChatClient(BaseChatClient):
             icon_url=self._icon_url
         )
 
-    def message_user(self, user: User, message: str=None):
+    def message_user(self, user: User, message: str = None):
         '''
-        Sends some message to a desired user, using a User object and a string message.
+        Sends some message to a desired user, using a
+        User object and a string message.
         '''
         channel = self._slack_web.im_open(user=user['id'])['channel']['id']
         self.send_message(channel, message)

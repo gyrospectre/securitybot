@@ -24,10 +24,13 @@ class AuthClient(BaseAuthClient):
     def __init__(self, connection_config, reauth_time, auth_attrib) -> None:
         '''
         Args:
-            connection_config (Dict): Parameters required to connect to the Okta API
-            reauth_time (int): The min time in seconds to cache auth requests
-            auth_attrib (str): The attribute of the user record that will be used to
-                               authenticate them.
+            connection_config (Dict):
+                Parameters required to connect to the Okta API
+            reauth_time (int):
+                The min time in seconds to cache auth requests
+            auth_attrib (str):
+                The attribute of the user record that will be used to
+                authenticate them.
         '''
         super().__init__(reauth_time, auth_attrib)
         connection_config['pathname'] = '/api/v1/users'
@@ -41,16 +44,18 @@ class AuthClient(BaseAuthClient):
 
     def _get_okta_userid(self, username):
         user = self.usersclient.get_users(query=username, limit=1)
-        
+
         try:
             return user[0].id
-        except:
+        except Exception as error:
+            logging.error('Error getting username {}'.format(error))
             return None
 
     def _get_factors(self, userid):
         try:
             return self.factorsclient.get_lifecycle_factors(userid)
-        except:
+        except Exception as error:
+            logging.error('Error getting factors {}'.format(error))
             return None
 
     def can_auth(self, user):
@@ -74,14 +79,19 @@ class AuthClient(BaseAuthClient):
 
     def auth(self, user, reason=None):
         # type: (str) -> None
-        logging.debug('Sending Okta Push request for {}'.format(self._auth_attribute(user)))
+        logging.debug(
+            'Sending Okta Push request for {}'.format(
+                self._auth_attribute(user)
+            )
+        )
 
-        ## Okta's SDK is broken! https://github.com/okta/okta-sdk-python/issues/66
-        #res = self.factorsclient.verify_factor(
+        # Okta's SDK is broken!
+        # https://github.com/okta/okta-sdk-python/issues/66
+        # res = self.factorsclient.verify_factor(
         #    user_id=self.okta_user_id,
         #    user_factor_id=self.okta_push_factor_id
-        #)
-        ## Implement our own call which actually works
+        # )
+        # Implement our own call which actually works
         okta_user_id = self._get_okta_userid(self._auth_attribute(user))
         res = self.apiclient.post_path(
             '/{0}/factors/{1}/verify'.format(

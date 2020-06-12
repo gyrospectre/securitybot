@@ -20,11 +20,18 @@ class SecretsClient(BaseSecretsClient):
     def __init__(self, connection_config) -> None:
         '''
         Args:
-            connection_config (Dict): Parameters required to connect to the Vault
+            connection_config (Dict):
+                Parameters required to connect to the Vault
         '''
+        try:
+            token = os.environ[connection_config['token_env']]
+        except KeyError as error:
+            raise SecretsException(
+                'Token environment variable missing: {}'.format(error)
+            )
         self._client = Client(
             url=connection_config['url'],
-            token=os.environ[connection_config['token_env']]
+            token=token
         )
         if not self._client.is_authenticated():
             raise SecretsException('Vault client authentication failed!')
@@ -32,7 +39,9 @@ class SecretsClient(BaseSecretsClient):
             logging.debug('Sucessfully connected to Vault.')
 
     def get_secret(self, secret):
-        read_response = self._client.secrets.kv.read_secret_version(path=secret)
+        read_response = self._client.secrets.kv.read_secret_version(
+            path=secret
+        )
 
         return read_response['data']['data']
 
@@ -43,5 +52,6 @@ class SecretsClient(BaseSecretsClient):
         )
         logging.debug("Wrote secret to path {}".format(name))
         if create_response['warnings'] is not None:
-            logging.debug('with warnings {}'.format(create_response['warnings']))
-
+            logging.debug(
+                'with warnings {}'.format(create_response['warnings'])
+            )
