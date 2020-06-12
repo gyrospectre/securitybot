@@ -129,5 +129,6 @@ class ChatClient(BaseChatClient):
         Sends some message to a desired user, using a
         User object and a string message.
         '''
-        channel = self._slack_web.im_open(user=user['id'])['channel']['id']
+        channel = self._slack_web.conversations_open(users=[user['id']])['channel']['id']
         self.send_message(channel, message)
+        
