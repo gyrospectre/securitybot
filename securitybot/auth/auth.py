@@ -57,7 +57,7 @@ class BaseAuthClient(object, metaclass=ABCMeta):
         raise NotImplementedError()
 
     @abstractmethod
-    def auth(self, reason: str=None) -> None:
+    def auth(self, reason: str = None) -> None:
         '''
         Begins an authorization request, which should be non-blocking.
 
@@ -68,7 +68,10 @@ class BaseAuthClient(object, metaclass=ABCMeta):
 
     def _recently_authed(self, user):
         # type: () -> bool
-        return (datetime.now(tz=pytz.utc) - user._last_auth_time) < timedelta(seconds=self.reauth_time)
+        return (
+            (datetime.now(tz=pytz.utc) - user._last_auth_time) <
+            timedelta(seconds=self.reauth_time)
+        )
 
     @abstractmethod
     def auth_status(self) -> int:

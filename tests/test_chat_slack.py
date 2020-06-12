@@ -1,5 +1,4 @@
 import unittest
-import json
 
 from unittest.mock import MagicMock
 from unittest.mock import patch
@@ -16,6 +15,7 @@ SLACK_CFG = {
     'token': '1234'
 }
 
+
 class TestChatProviderSlack(unittest.TestCase):
     @patch('securitybot.chat.slack.RTMClient')
     @patch('securitybot.chat.slack.WebClient')
@@ -31,7 +31,7 @@ class TestChatProviderSlack(unittest.TestCase):
         ChatClient.connect = MagicMock()
         cli = ChatClient(connection_config=SLACK_CFG)
 
-        cli._slack_web.im_open.return_value = {'channel': {'id': '11'} }
+        cli._slack_web.im_open.return_value = {'channel': {'id': '11'}}
         cli.message_user(user={'id': 'test'}, message='what?')
 
         cli._slack_web.chat_postMessage.assert_called_once_with(
@@ -60,6 +60,5 @@ class TestChatProviderSlack(unittest.TestCase):
         users = ['bill', 'sally']
         cli._slack_web.users_list.return_value = {'members': users}
         u_result = cli.get_users()
-        
 
         self.assertEqual(u_result, (users))

@@ -19,15 +19,16 @@ class BaseDbClient(object, metaclass=ABCMeta):
         Initializes the DB backend with the config dictionnary.
 
         Args:
-            config (dict): The configuration forn the database. This may contains implementation specific paramters
+            config (dict):
+                The configuration forn the database. This may contains
+                implementation specific paramters
         '''
         raise NotImplementedError()
 
     @abstractmethod
-    def execute(self, query: str, params: List[Any]=None):
+    def execute(self, query: str, params: List[Any] = None):
         '''
-        Instructs the backend to run the following query and return a list of results.
+        Instructs the backend to run the following query
+        and return a list of results.
         '''
         raise NotImplementedError()
-
-

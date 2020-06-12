@@ -15,7 +15,7 @@ class AuthClient(BaseAuthClient):
     def can_auth(self, user) -> bool:
         return False
 
-    def auth(self, user, reason: str=None) -> None:
+    def auth(self, user, reason: str = None) -> None:
         pass
 
     def _recently_authed(self, user) -> str:

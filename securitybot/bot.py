@@ -25,7 +25,9 @@ import securitybot.commands as bot_commands
 
 
 DEFAULT_COMMAND = {
-    'fn': lambda b, u, a: logging.warn('No function provided for this command.'),
+    'fn': lambda b, u, a: logging.warn(
+        'No function provided for this command.'
+    ),
     'info': 'I was too lazy to provide information for this command',
     'hidden': False,
     'usage': None,
@@ -50,6 +52,7 @@ def clean_input(text):
 
     return text
 
+
 PUNCTUATION = r'[.,!?\'"`]'
 
 
@@ -57,7 +60,8 @@ def clean_command(command):
     # type: (str) -> str
     '''Cleans a command.'''
     command = command.lower()
-    # Remove punctuation people are likely to use and won't interfere with command names
+    # Remove punctuation people are likely to use and
+    # won't interfere with command names
     command = sub(PUNCTUATION, '', command)
     return command
 
@@ -70,20 +74,29 @@ class SecurityBot(object):
     def __init__(self, config):
         '''
         Args:
-            chat (ChatClient): The type of chat client to use for messaging.
-            tasker (Tasker): The Tasker object to get tasks from.
-            auth (AuthClient): The type of auth client to use for MFA.
-            reporting_channel (str): Channel ID to report alerts in need of verification to.
-            config_path (str): Path to configuration file
+            chat (ChatClient):
+                The type of chat client to use for messaging.
+            tasker (Tasker):
+                The Tasker object to get tasks from.
+            auth (AuthClient):
+                The type of auth client to use for MFA.
+            reporting_channel (str):
+                Channel ID to report alerts in need of verification to.
+            config_path (str):
+                Path to configuration file
         '''
         logging.info('Creating securitybot.')
         self._last_task_poll = datetime.min.replace(tzinfo=pytz.utc)
         self._last_report = datetime.min.replace(tzinfo=pytz.utc)
-        self._task_poll_time = timedelta(seconds=int(config['bot']['timers']['task_poll_time']))
+        self._task_poll_time = timedelta(
+            seconds=int(config['bot']['timers']['task_poll_time'])
+        )
         self._opening_time = config['bot']['time']['opening_hour']
         self._closing_time = config['bot']['time']['closing_hour']
         self._local_tz = pytz.timezone(config['bot']['time']['local_tz'])
-        self._escalation_time_mins = config['bot']['time']['escalation_time_mins']
+        self._escalation_time_mins = (
+            config['bot']['time']['escalation_time_mins']
+        )
         self._backoff_time_hrs = config['bot']['time']['backoff_time_hrs']
 
         self._config = config
@@ -101,7 +114,7 @@ class SecurityBot(object):
                 config['bot']['commands_path']
             )
         )
-        self.messages = config=loader.load_yaml(
+        self.messages = loader.load_yaml(
             config['bot']['messages_path']
         )
 
@@ -199,8 +212,8 @@ class SecurityBot(object):
         # type: () -> None
         '''
         Handles all messages sent to securitybot.
-        Currently only active users are considered, i.e. we don't care if a user
-        sends us a message but we haven't sent them anything.
+        Currently only active users are considered, i.e. we don't
+        care if a user sends us a message but we haven't sent them anything.
         '''
         messages = self._chatclient.get_messages()
         for message in messages:
@@ -208,11 +221,15 @@ class SecurityBot(object):
             text = message['text']
             user = self.user_lookup(user_id)
 
-            # Parse each received line as a command, otherwise send an error message
+            # Parse each received line as a command, otherwise
+            # send an error message
             if self.is_command(text):
                 self.handle_command(user, text)
             else:
-                self._chatclient.message_user(user, self.messages['bad_command'])
+                self._chatclient.message_user(
+                    user,
+                    self.messages['bad_command']
+                )
 
     def handle_command(self, user, command):
         # type: (User, str) -> None
@@ -254,7 +271,9 @@ class SecurityBot(object):
         if self.valid_user(username):
             # Ignore blacklisted users
             if self.blacklist.is_present(username):
-                logging.info('Ignoring task for blacklisted {0}'.format(username))
+                logging.info(
+                    'Ignoring task for blacklisted {0}'.format(username)
+                )
                 task.comment = 'blacklisted'
                 task.set_verifying()
             else:
@@ -356,7 +375,12 @@ class SecurityBot(object):
         logging.info('Gathering information about all team members...')
         members = self._chatclient.get_users()
         for member in members:
-            user = User(user=member, auth=self._authclient, dbclient=self._dbclient, parent=self)
+            user = User(
+                user=member,
+                auth=self._authclient,
+                dbclient=self._dbclient,
+                parent=self
+            )
             self.users[member['id']] = user
             self.users_by_name[member['name']] = user
         logging.info('Gathered info on {} users.'.format(len(self.users)))
@@ -399,7 +423,12 @@ class SecurityBot(object):
         Args:
             user (User): The user to greet.
         '''
-        self._chatclient.message_user(user, self.messages['greeting'].format(user.get_name()))
+        self._chatclient.message_user(
+            user,
+            self.messages['greeting'].format(
+                user.get_name()
+            )
+        )
 
     # Command functions
     def is_command(self, command):

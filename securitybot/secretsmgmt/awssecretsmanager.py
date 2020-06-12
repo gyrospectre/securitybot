@@ -32,7 +32,7 @@ class SecretsClient(BaseSecretsClient):
         )
 
         return json.loads(response['SecretString'])
-    
+
     def create_secret(self, name, value, description=''):
         try:
             response = self._client.create_secret(
@@ -46,7 +46,7 @@ class SecretsClient(BaseSecretsClient):
                     },
                 ]
             )
-        except ClientError as e: 
+        except ClientError as e:
             if 'ResourceExistsException' == e.__class__.__name__:
                 # Secret already exists, just update it
                 response = self._client.put_secret_value(
@@ -54,4 +54,4 @@ class SecretsClient(BaseSecretsClient):
                     SecretString=json.dumps(value),
                 )
                 return response
-        return response 
+        return response

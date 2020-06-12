@@ -59,14 +59,15 @@ class BaseChatClient(object, metaclass=ABCMeta):
     def send_message(self, channel: Any, message: str) -> None:
         '''
         Sends some message to a desired channel.
-        As channels are possibly chat-system specific, this function has a horrible
-        type signature.
+        As channels are possibly chat-system specific, this
+        function has a horribletype signature.
         '''
         pass
 
     @abstractmethod
     def message_user(self, user: User, message: str) -> None:
         '''
-        Sends some message to a desired user, using a User object and a string message.
+        Sends some message to a desired user, using a User
+        object and a string message.
         '''
         pass

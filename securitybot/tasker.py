@@ -24,8 +24,9 @@ class StatusLevel(Enum):
 
 class Task(object):
 
-    def __init__(self, hsh, title, username, reason, description, url, event_time,
-                 performed, comment, authenticated, status, dbclient):
+    def __init__(self, hsh, title, username, reason, description,
+                 url, event_time, performed, comment, authenticated,
+                 status, dbclient):
         # type: (str, str, str, str, str, bool, str, bool, int) -> None
         '''
         Creates a new Task for an alert that should go to `username` and is
@@ -72,7 +73,8 @@ class Task(object):
         '''
         Updates the user response for this task.
         '''
-        self._dbclient.execute('set_response', 
+        self._dbclient.execute(
+            'set_response',
             (
                 self.comment,
                 self.performed,

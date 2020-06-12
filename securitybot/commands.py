@@ -18,7 +18,10 @@ from securitybot.util import create_new_alert
 
 def hi(bot, user, args):
     '''Says hello to a user.'''
-    bot._chatclient.message_user(user, bot.messages['hi'].format(user.get_name()))
+    bot._chatclient.message_user(
+        user,
+        bot.messages['hi'].format(user.get_name())
+    )
 
 
 def help(bot, user, args):
@@ -29,7 +32,10 @@ def help(bot, user, args):
             msg += '`{0}`: {1}\n'.format(name, info['info'])
             if info['usage']:
                 usage_str = '\n'.join(['> \t' + s for s in info['usage']])
-                msg += '> {0}:\n{1}\n'.format(bot.messages['help_usage'], usage_str)
+                msg += '> {0}:\n{1}\n'.format(
+                    bot.messages['help_usage'],
+                    usage_str
+                )
     msg += bot.messages['help_footer']
     bot._chatclient.message_user(user, msg)
 
@@ -60,6 +66,7 @@ def positive_response(bot, user, args):
 def negative_response(bot, user, args):
     '''Registers a negative response from a user.'''
     user.negative_response(' '.join(args))
+
 
 TIME_REGEX = re.compile(r'([0-9]+h)?([0-9]+m)?', flags=re.IGNORECASE)
 OUTATIME = timedelta()

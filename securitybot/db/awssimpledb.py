@@ -53,23 +53,6 @@ class DbClient(BaseDbClient):
         logging.debug('Result: ' + str(rows))
         return rows
 
-    def _put_attribs(self, item, attribs, domain):
-        self._client.put_attributes(
-            DomainName=domain,
-            ItemName=item,
-            Attributes=attribs
-        )
-
-    def _get_attribs(self, item, attrib_names, domain):
-        response = self._client.get_attributes(
-            DomainName=domain,
-            ItemName=item,
-            AttributeNames=attrib_names,
-            ConsistentRead=True
-        )
-
-        return response
-
     def _format_response(self, dictofdict, fields,
                          timefields=[], boolfields=[]):
         # first value is the primary key
@@ -117,6 +100,10 @@ class DbClient(BaseDbClient):
 
         return dictofdicts
 
+    #
+    # Conversion Helper Functions
+    #
+
     def _dict_to_items(self, attribdict, replace=False):
         attribs = []     # list of dicts, with the dict the attribs
         items = []       # list of item names
@@ -135,6 +122,37 @@ class DbClient(BaseDbClient):
 
             attribs.append(attrib_entry)
         return items, attribs
+
+    def _params_to_items(self, fieldnames, values,
+                         timefields=[], boolfields=[], replace=True):
+        '''
+        Taks a list of fieldnames, and a list of values
+        and maps the two into a dict
+        '''
+        record = {}
+        prikey = values[0]
+
+        for index, field in enumerate(fieldnames):
+            if index > 0:
+                if field in timefields:
+                    record[prikey][field] = datetime.strptime(
+                        values[index], TIME_FORMAT
+                    )
+                elif field in boolfields:
+                    record[prikey][field] = bool(values[index])
+                else:
+                    record[prikey][field] = values[index]
+            else:
+                record[prikey] = {}
+
+        return self._dict_to_items(
+            attribdict=record,
+            replace=replace
+        )
+
+    #
+    # SQL Like Helper Functions
+    #
 
     def _select(self, fields, table, where=""):
         if where != '':
@@ -173,32 +191,9 @@ class DbClient(BaseDbClient):
 
         return True
 
-    def _params_to_dict(self, fieldnames, values,
-                        timefields=[], boolfields=[]):
-        '''
-        Taks a list of fieldnames, and a list of values
-        and maps the two into a dict
-        '''
-        record = {}
-        if isinstance(values[0], bytes):
-            prikey = values[0].decode("utf-8")
-        else:
-            prikey = values[0]
-
-        for index, field in enumerate(fieldnames):
-            if index > 0:
-                if field in timefields:
-                    record[prikey][field] = datetime.strptime(
-                        values[index], TIME_FORMAT
-                    )
-                elif field in boolfields:
-                    record[prikey][field] = bool(values[index])
-                else:
-                    record[prikey][field] = values[index]
-            else:
-                record[prikey] = {}
-
-        return record
+    #
+    # Query replacements
+    #
 
     def _update_ignored_list(self, params=None):
         '''
@@ -257,14 +252,10 @@ class DbClient(BaseDbClient):
         ON DUPLICATE KEY UPDATE reason=VALUES(reason), until=VALUES(until)
         '''
         fields = ['ldap', 'title', 'reason', 'until']
-        new_ignored = self._params_to_dict(
+        ignored_items, item_attribs = self._params_to_items(
             fieldnames=fields,
             values=params,
-            timefields=['until']
-        )
-
-        ignored_items, item_attribs = self._dict_to_items(
-            attribdict=new_ignored,
+            timefields=['until'],
             replace=True
         )
 
@@ -288,26 +279,79 @@ class DbClient(BaseDbClient):
         )
 
     def _blacklist_list(self, params=None):
-        return []
+        '''
+        SELECT * FROM blacklist
+        '''
+        # Only grab new alerts
+        blacklisted = self._select(
+            fields='*',
+            table='blacklist',
+        )
 
-    def _blacklist_add(self):
-        return []
+        return self._format_response(
+            dictofdict=blacklisted,
+            fields=['ldap']
+        )
 
-    def _blacklist_remove(self):
-        return []
+    def _blacklist_add(self, params):
+        '''
+        INSERT INTO blacklist (ldap) VALUES (%s)
+        '''
+        fields = ['ldap']
+        items, attribs = self._params_to_items(
+            fieldnames=fields,
+            values=params,
+            replace=True
+        )
+
+        if self._insert(
+            items=items,
+            attribs=attribs,
+            table='blacklist'
+        ) is True:
+            logging.debug('Added {} to the blacklist.'.format(params[0]))
+            return True
+        else:
+            logging.error('Could not add {} items to the blacklist.'.format(
+                params[0])
+            )
+            return False
+
+    def _blacklist_remove(self, params):
+        '''
+        DELETE FROM blacklist WHERE ldap = %s
+        '''
+        entries = self._select(
+            fields='*',
+            table='blacklist',
+            where="ldap = '{}'".format(params[0])
+        )
+        items, attribs = self._dict_to_items(entries)
+
+        if self._delete(
+            items=items,
+            attribs=attribs,
+            table='blacklist'
+        ) is True:
+            logging.debug('Removed {} items from blacklist.'.format(
+                len(items)
+                )
+            )
+            return True
+        else:
+            logging.error('Could no remove {} items from blacklist.'.format(
+                len(items))
+            )
+            return False
 
     def _new_alert_status(self, params):
         '''
         INSERT INTO alert_status (hash, status) VALUES (UNHEX(%s), %s)
         '''
         fields = ['hash', 'status']
-        new_status = self._params_to_dict(
+        items, attribs = self._params_to_items(
             fieldnames=fields,
-            values=params
-        )
-
-        items, attribs = self._dict_to_items(
-            attribdict=new_status,
+            values=params,
             replace=True
         )
 
@@ -326,92 +370,68 @@ class DbClient(BaseDbClient):
             )
             return False
 
-        logging.debug('Added alert status for {}, status {}'.format(
-            params[0], params[1])
-        )
-
     def _new_alert_alerts(self, params):
-        # TODO: Move to new functions
         '''
         INSERT INTO alerts
             (hash, ldap, title, description, reason, url, event_time)
         VALUES (UNHEX(%s), %s, %s, %s, %s, %s, NOW())
         '''
-        primaryfield = 'hash'
-        fields = ['hash', 'ldap', 'title', 'description', 'reason', 'url']
-        attribs = []
-        for index, value in enumerate(params):
-            if fields[index] is primaryfield:
-                item = value.decode("utf-8")
-            else:
-                attribs.append(
-                    {
-                        'Name': fields[index],
-                        'Value': str(value),
-                        'Replace': True
-                    }
-                )
-        # Add a timestamp
-        attribs.append(
-            {
-                'Name': 'event_time',
-                'Value': datetime.now(tz=pytz.utc).strftime(TIME_FORMAT),
-                'Replace': True
-            }
-        )
-        self._put_attribs(
-            item=item,
-            attribs=attribs,
-            domain='{}.alerts'.format(self._domain_prefix)
-        )
-        logging.debug('Created new alert: {} - {}'.format(item, attribs))
+        fields = [
+            'hash', 'ldap', 'title', 'description',
+            'reason', 'url', 'event_time'
+        ]
 
-        return True
+        # Add a timestamp
+        params = list(params)
+        params.append(datetime.now(tz=pytz.utc).strftime(TIME_FORMAT))
+
+        items, attribs = self._params_to_items(
+            fieldnames=fields,
+            values=params,
+            replace=True
+        )
+
+        if self._insert(
+            items=items,
+            attribs=attribs,
+            table='alerts'
+        ) is True:
+            logging.debug('Added {} items to the alert status list.'.format(
+                len(items))
+            )
+            return True
+        else:
+            logging.error('Could not add {} items to alert status.'.format(
+                len(items))
+            )
+            return False
 
     def _new_alert_user_response(self, params):
-        # TODO: Move to new functions
         '''
         INSERT INTO user_responses (hash, comment, performed, authenticated)
         VALUES (UNHEX(%s), '', false, false)
         '''
-        primaryfield = 'hash'
         fields = ['hash', 'comment', 'performed', 'authenticated']
-        defaults = {
-            'comment': '',
-            'performed': '0',
-            'authenticated': '0'
-        }
-        attribs = []
-        for index, value in enumerate(params):
-            if fields[index] is primaryfield:
-                item = value.decode("utf-8")
-            else:
-                attribs.append(
-                    {
-                        'Name': fields[index],
-                        'Value': str(value),
-                        'Replace': True
-                    }
-                )
-        for fieldname, value in defaults.items():
-            attribs.append(
-                {
-                    'Name': fieldname,
-                    'Value': value,
-                    'Replace': True
-                }
-            )
+        items, attribs = self._params_to_items(
+            fieldnames=fields,
+            values=params,
+            replace=True
+        )
 
-        self._put_attribs(
-            item=item,
+        if self._insert(
+            items=items,
             attribs=attribs,
-            domain='{}.user_responses'.format(self._domain_prefix)
-        )
-        logging.debug('Created new user response: {} - {}'.format(
-            item, attribs)
-        )
-
-        return True
+            table='user_responses'
+        ) is True:
+            logging.debug('Added {} items to the user response list.'.format(
+                len(items))
+            )
+            return True
+        else:
+            logging.error('Could not add {} items to user response.'.format(
+                len(items))
+            )
+            return False
 
     def _get_alerts(self, params=None):
         '''
@@ -464,29 +484,31 @@ class DbClient(BaseDbClient):
         )
 
     def _set_status(self, params=None):
-        # TODO: Move to new functions
         '''
         UPDATE alert_status
         SET status=%s
         WHERE hash=UNHEX(%s)
         '''
-        status = params[0]
-        statushash = params[1]
+        # Due to the SQL query, fields are reversed, hash is pri key
+        # Turn it into a list and reverse it, so we can reuse our
+        # existing function
+        params = list(params)
+        params.reverse()
 
-        attribs = [
-            {
-                'Name': 'status',
-                'Value': str(status),
-                'Replace': True
-            }
-        ]
-
-        self._put_attribs(
-            item=statushash,
-            attribs=attribs,
-            domain='{}.alert_status'.format(self._domain_prefix)
-        )
-        logging.debug('Updated status for alert: {}'.format(statushash))
+        return self._new_alert_status(params)
 
     def _set_response(self, params=None):
-        pass
+        '''
+        UPDATE user_responses
+        SET comment=%s,
+            performed=%s,
+            authenticated=%s
+        WHERE hash=UNHEX(%s)
+        '''
+        # Grab the hash from the end of the list and insert at the
+        # start so we can reuse our existing function
+        new_params = list(params)
+        hash = new_params.pop()
+        new_params.insert(0, hash)
+
+        return self._new_alert_user_response(new_params)

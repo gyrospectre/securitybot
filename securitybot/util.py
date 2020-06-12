@@ -40,8 +40,10 @@ def get_expiration_time(start, ttl, bot):
     so that alerts that are started near the end of the day don't expire.
 
     Args:
-        start (Datetime): A datetime object indicating when an alert was started.
-        ttl (Timedelta): A timedelta representing the amount of time the alert
+        start (Datetime):
+            A datetime object indicating when an alert was started.
+        ttl (Timedelta):
+            A timedelta representing the amount of time the alert
             should live for.
     Returns:
         Datetime: The expiry time for an alert.
@@ -56,7 +58,9 @@ def get_expiration_time(start, ttl, bot):
                               hour=bot._closing_time,
                               tzinfo=bot._local_tz)
         delta = end - end_of_day
-        next_day = end_of_day + timedelta(hours=(bot._opening_time - bot._closing_time) % 24)
+        next_day = end_of_day + timedelta(
+            hours=(bot._opening_time - bot._closing_time) % 24
+        )
         # This may land on a weekend, so march to the next weekday
         while not during_business_hours(next_day, bot):
             next_day += timedelta(days=1)
@@ -64,19 +68,24 @@ def get_expiration_time(start, ttl, bot):
     return end
 
 
-def create_new_alert(dbclient, title, ldap, description, reason, url='N/A', key=None):
+def create_new_alert(dbclient, title, ldap, description,
+                     reason, url='N/A', key=None):
     # type: (str, str, str, str, str, str) -> None
     '''
     Creates a new alert in the SQL DB with an optionally random hash.
     '''
     # Generate random key if none provided
     if key is None:
-        key = binascii.hexlify(os.urandom(32))
+        key = str(binascii.hexlify(os.urandom(32)))
 
     # Insert that into the database as a new alert
-    dbclient.execute('new_alert_alerts',
-                      (key, ldap, title, description, reason, url))
-
-    dbclient.execute('new_alert_user_response', (key,))
+    dbclient.execute(
+        'new_alert_alerts',
+        (
+            key, ldap, title, description, reason, url
+        )
+    )
+    # key, comment, performed, authenticated
+    dbclient.execute('new_alert_user_response', (key, '', 0, 0))
 
     dbclient.execute('new_alert_status', (key, StatusLevel.OPEN.value))

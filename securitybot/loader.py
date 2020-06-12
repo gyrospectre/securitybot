@@ -13,7 +13,9 @@ from securitybot.secretsmgmt.secretsmgmt import BaseSecretsClient
 
 from securitybot.tasker import Tasker
 
-from securitybot.exceptions import InvalidAuthProvider, InvalidChatProvider, InvalidDatabaseProvider, InvalidSecretsProvider
+from securitybot.exceptions import InvalidAuthProvider, InvalidChatProvider
+from securitybot.exceptions import InvalidDatabaseProvider
+from securitybot.exceptions import InvalidSecretsProvider
 
 
 def load_secrets_client(secrets_provider):
@@ -27,7 +29,9 @@ def load_secrets_client(secrets_provider):
 
         if not issubclass(client, BaseSecretsClient):
             raise AttributeError(
-                '{}.Client is not an SecretsClient Provider'.format(module_name)
+                '{}.Client is not an SecretsClient Provider'.format(
+                    module_name
+                )
             )
 
         return client
@@ -38,6 +42,7 @@ def load_secrets_client(secrets_provider):
             )
         )
 
+
 def build_secrets_client(secrets_provider, connection_config):
     secrets_class = load_secrets_client(secrets_provider)
 
@@ -45,8 +50,9 @@ def build_secrets_client(secrets_provider, connection_config):
         connection_config
     )
 
+
 def add_secrets_to_config(smclient, secrets, config):
-    for client_type,clients in secrets.items():
+    for client_type, clients in secrets.items():
         client = config[client_type]['provider']
 
         if client in clients:
@@ -56,18 +62,23 @@ def add_secrets_to_config(smclient, secrets, config):
                     client
                 )
             )
-            secrets_raw = smclient.get_secret(
+            scrt_raw = smclient.get_secret(
                 'securitybot/{}/{}'.format(
                     client_type,
                     client
                 )
             )
-            for secret_name in secrets[client_type][client]:
-                config[client_type][client][secret_name] = secrets_raw[secret_name]
+            for scrt_name in secrets[client_type][client]:
+                config[client_type][client][scrt_name] = scrt_raw[scrt_name]
         else:
-            logging.debug('No secrets for {} provider {}'.format(client_type,client))
+            logging.debug(
+                'No secrets for {} provider {}'.format(
+                    client_type, client
+                )
+            )
 
     return True
+
 
 def load_auth_client(auth_provider):
     try:
@@ -91,7 +102,9 @@ def load_auth_client(auth_provider):
             )
         )
 
-def build_auth_client(auth_provider, connection_config, reauth_time, auth_attrib):
+
+def build_auth_client(auth_provider, connection_config,
+                      reauth_time, auth_attrib):
     auth_class = load_auth_client(auth_provider)
 
     return auth_class(
@@ -99,6 +112,7 @@ def build_auth_client(auth_provider, connection_config, reauth_time, auth_attrib
         reauth_time,
         auth_attrib
     )
+
 
 def load_chat_client(chat_provider):
     try:
@@ -122,6 +136,7 @@ def load_chat_client(chat_provider):
             )
         )
 
+
 def build_chat_client(chat_provider, connection_config):
     chat_class = load_chat_client(chat_provider)
 
@@ -129,8 +144,10 @@ def build_chat_client(chat_provider, connection_config):
         connection_config
     )
 
+
 def build_tasker(dbclient):
     return Tasker(dbclient)
+
 
 def load_db_client(db_provider):
     try:
@@ -154,13 +171,15 @@ def load_db_client(db_provider):
             )
         )
 
+
 def build_db_client(db_provider, connection_config):
     db_class = load_db_client(db_provider)
 
     return db_class(
         config=connection_config,
-        queries=load_yaml(connection_config.get('queries_path',None))
+        queries=load_yaml(connection_config.get('queries_path', None))
     )
+
 
 def load_yaml(path):
     if path:

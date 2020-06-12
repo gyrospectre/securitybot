@@ -22,16 +22,19 @@ def get_ignored(dbclient, username: str) -> Dict[str, str]:
     the ignored are ignored.
 
     Args:
-        username (str): The username of the user to retrieve ignored alerts for.
+        username (str):
+            The username of the user to retrieve ignored alerts for.
     Returns:
-        Dict[str, str]: A mapping of ignored alert titles to reasons
+        Dict[str, str]:
+            A mapping of ignored alert titles to reasons
     '''
     __update_ignored_list(dbclient)
     rows = dbclient.execute('get_ignored', (username,))
     return {row[0]: row[1] for row in rows}
 
 
-def ignore_task(dbclient, username: str, title: str, reason: str, ttl: timedelta) -> None:
+def ignore_task(dbclient, username: str, title: str,
+                reason: str, ttl: timedelta) -> None:
     '''
     Adds a task with the given title to the ignore list for the given
     amount of time. Additionally adds an optional message to specify the
@@ -46,5 +49,9 @@ def ignore_task(dbclient, username: str, title: str, reason: str, ttl: timedelta
     expiry_time = datetime.now(tz=pytz.utc) + ttl
 
     # NB: Non-standard MySQL specific query
-    dbclient.execute('ignore_task',
-                       (username, title, reason, expiry_time.strftime(TIME_FORMAT)))
+    dbclient.execute(
+        'ignore_task',
+        (
+            username, title, reason, expiry_time.strftime(TIME_FORMAT)
+        )
+    )
