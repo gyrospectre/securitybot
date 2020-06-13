@@ -24,10 +24,12 @@ class DbClient(BaseDbClient):
         Initializes the DynamoDB connection to be used for the bot.
 
         '''
-        self._client = client('sdb')
         self._domain_prefix = config['domain_prefix']
-
+        self._tables = config.get('tables', None)
         self.queries = ''
+
+        self._client = client('sdb')
+        self._create_tables()
 
     def execute(self, query, params=None):
         '''
@@ -52,6 +54,37 @@ class DbClient(BaseDbClient):
 
         logging.debug('Result: ' + str(rows))
         return rows
+
+    def _create_tables(self):
+        '''
+        Create all tables (domains) in list, if they don't already exist
+        '''
+        for table in self._tables:
+            self._client.create_domain(
+                DomainName='{}.{}'.format(self._domain_prefix, table)
+            )
+
+    def delete_table(self, table):
+        '''
+        Deletes a table (domain in SDB)
+        '''
+        try:
+            domain = '{}.{}'.format(
+                self._domain_prefix,
+                table
+            )
+            result = self._client.delete_domain(
+                DomainName=domain
+            )
+        except Exception as e:
+            logging.error("Domain '{}' deletion failed! ({})".format(domain, e))
+            return False, e
+        
+        return True, 'ok'
+
+    #
+    # Conversion Helper Functions
+    #
 
     def _format_response(self, dictofdict, fields,
                          timefields=[], boolfields=[]):
@@ -99,10 +132,6 @@ class DbClient(BaseDbClient):
             pass
 
         return dictofdicts
-
-    #
-    # Conversion Helper Functions
-    #
 
     def _dict_to_items(self, attribdict, replace=False):
         attribs = []     # list of dicts, with the dict the attribs

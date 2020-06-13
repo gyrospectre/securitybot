@@ -8,6 +8,7 @@ __author__ = 'Alex Bertsch, Antoine Cardon'
 __email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
 import pytz
+import logging
 
 from enum import Enum, unique
 
@@ -17,9 +18,11 @@ from typing import List
 @unique
 class StatusLevel(Enum):
     # Task status levels
-    OPEN = 0
-    INPROGRESS = 1
-    VERIFICATION = 2
+    OPEN = 0            # New task
+    INPROGRESS = 1      # User has been told
+    VERIFICATION = 2    # User has said it was them, we're verifying
+    DONE = 3            # User has said they didn't do it, they didn't
+                        # respond at all, or they said yes and we verified
 
 
 class Task(object):
@@ -93,6 +96,20 @@ class Task(object):
         self._set_status(StatusLevel.VERIFICATION.value)
         self._set_response()
 
+    def finalise(self):
+        self._set_status(StatusLevel.DONE.value)
+        logging.debug('Deleting task {} from database.'.format(
+            self.hash)
+        )
+        self._dbclient.execute(
+            'delete_alert', (self.hash, )
+        )
+        self._dbclient.execute(
+            'delete_alert_status', (self.hash, )
+        )
+        self._dbclient.execute(
+            'delete_user_response', (self.hash, )
+        )
 
 class Tasker(object):
     '''
@@ -126,3 +143,4 @@ class Tasker(object):
     def get_pending_tasks(self):
         # type: () -> List[Task]
         return self._get_tasks(StatusLevel.VERIFICATION.value)
+

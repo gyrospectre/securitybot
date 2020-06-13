@@ -1,17 +1,25 @@
-import logging
+from logging import (
+    basicConfig as logConfig, getLogger,
+    CRITICAL, ERROR, WARNING, INFO, DEBUG
+)
 
 from securitybot import loader
 from securitybot.bot import SecurityBot
-
+from securitybot.exceptions import ConfigException
 
 def main():
-    # Setup logging
-    logging.basicConfig(level=logging.DEBUG,
-                        format='[%(asctime)s %(levelname)s] %(message)s')
-    logging.getLogger('requests').setLevel(logging.WARNING)
-    logging.getLogger('usllib3').setLevel(logging.WARNING)
-
+    # Load our config first
     config = loader.load_yaml('config/bot.yaml')
+
+    # Setup logging
+    level = config['logging']['level']
+    if level not in ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG']:
+        raise ConfigException('Invalid logging level - {}'.format(level))
+
+    logConfig(level=level,
+                        format='[%(asctime)s %(levelname)s] %(message)s')
+    getLogger('requests').setLevel(level)
+    getLogger('usllib3').setLevel(level)
 
     # Try and create a bot instance
     try:

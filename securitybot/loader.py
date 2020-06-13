@@ -13,9 +13,10 @@ from securitybot.secretsmgmt.secretsmgmt import BaseSecretsClient
 
 from securitybot.tasker import Tasker
 
-from securitybot.exceptions import InvalidAuthProvider, InvalidChatProvider
-from securitybot.exceptions import InvalidDatabaseProvider
-from securitybot.exceptions import InvalidSecretsProvider
+from securitybot.exceptions import (
+    InvalidAuthProvider, InvalidChatProvider, 
+    InvalidDatabaseProvider, InvalidSecretsProvider
+)
 
 
 def load_secrets_client(secrets_provider):
@@ -172,8 +173,9 @@ def load_db_client(db_provider):
         )
 
 
-def build_db_client(db_provider, connection_config):
+def build_db_client(db_provider, connection_config, tables):
     db_class = load_db_client(db_provider)
+    connection_config['tables'] = tables
 
     return db_class(
         config=connection_config,

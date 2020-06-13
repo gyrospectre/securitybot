@@ -160,7 +160,8 @@ class SecurityBot(object):
 
         self._dbclient = loader.build_db_client(
             db_provider=db_provider,
-            connection_config=self._config['database'][db_provider]
+            connection_config=self._config['database'][db_provider],
+            tables=self._config['database']['tables']
         )
         self._authclient = loader.build_auth_client(
             auth_provider=auth_provider,

@@ -2,7 +2,7 @@ __author__ = 'Alex Bertsch, Antoine Cardon'
 __email__ = 'abertsch@dropbox.com, antoine.cardon@algolia.com'
 
 import pytz
-import binascii
+import secrets
 import os
 from datetime import datetime, timedelta
 from collections import namedtuple
@@ -76,7 +76,7 @@ def create_new_alert(dbclient, title, ldap, description,
     '''
     # Generate random key if none provided
     if key is None:
-        key = str(binascii.hexlify(os.urandom(32)))
+        key = secrets.token_hex(nbytes=32)
 
     # Insert that into the database as a new alert
     dbclient.execute(
