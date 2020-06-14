@@ -247,6 +247,18 @@ class User(object):
         '''Marks the current task as needing verification and moves on.'''
         logging.info('Silently escalating {0} for {1}'
                      .format(self.pending_task.description, self['name']))
+        # Alert bot's reporting channel
+        if self._bot._chatclient.reporting_channel is not None:
+            # Format message
+            self._bot._chatclient.send_message(
+                self._bot._chatclient.reporting_channel,
+                self._bot.messages['report_noresponse'].format(
+                    username=self['name'],
+                    title=self.pending_task.title,
+                    description=self.pending_task.description,
+                    url=self.pending_task.url
+                )
+            )
         # Append in the case that this is called
         # when waiting for auth permission
         self.pending_task.comment += 'Auto escalated. No response received.'
@@ -370,6 +382,7 @@ class User(object):
         a message alerting the user of more. Otherwise sends a farewell message
         and removes itself from the bot.
         '''
+        print("here ################################################################################### {}".format(self.pending_task))
         # Ignore an alert if they did it
         if self.pending_task.performed:
             ignored_alerts.ignore_task(
@@ -379,7 +392,7 @@ class User(object):
                 reason='auto backoff after confirmation',
                 ttl=timedelta(hours=self._bot._backoff_time_hrs)
             )
-        self.pending_task.set_verifying()
+        self.pending_task.finalise()
         self.pending_task = None
         self._reset_message()
         self._update_tasks()

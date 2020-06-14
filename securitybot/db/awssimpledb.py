@@ -24,10 +24,12 @@ class DbClient(BaseDbClient):
         Initializes the DynamoDB connection to be used for the bot.
 
         '''
-        self._client = client('sdb')
         self._domain_prefix = config['domain_prefix']
-
+        self._tables = config.get('tables', None)
         self.queries = ''
+
+        self._client = client('sdb')
+        self._create_tables()
 
     def execute(self, query, params=None):
         '''
@@ -52,6 +54,47 @@ class DbClient(BaseDbClient):
 
         logging.debug('Result: ' + str(rows))
         return rows
+
+    def _create_tables(self):
+        '''
+        Create all tables (domains) in list, if they don't already exist
+        '''
+        for table in self._tables:
+            self._client.create_domain(
+                DomainName='{}.{}'.format(self._domain_prefix, table)
+            )
+
+    def delete_table(self, table):
+        '''
+        Deletes a table (domain in SDB)
+        '''
+        try:
+            domain = '{}.{}'.format(
+                self._domain_prefix,
+                table
+            )
+            result = self._client.delete_domain(
+                DomainName=domain
+            )
+        except Exception as e:
+            logging.error("Domain '{}' deletion failed! ({})".format(domain, e))
+            return False, e
+        
+        return True, 'ok'
+
+    def dump_table(self, table):
+        '''
+        Dumps a table (domain in SDB)
+        '''
+        rows = self._select(
+            fields='*',
+            table=table
+        )
+        return rows
+
+    #
+    # Conversion Helper Functions
+    #
 
     def _format_response(self, dictofdict, fields,
                          timefields=[], boolfields=[]):
@@ -99,10 +142,6 @@ class DbClient(BaseDbClient):
             pass
 
         return dictofdicts
-
-    #
-    # Conversion Helper Functions
-    #
 
     def _dict_to_items(self, attribdict, replace=False):
         attribs = []     # list of dicts, with the dict the attribs
@@ -342,7 +381,7 @@ class DbClient(BaseDbClient):
             )
             return True
         else:
-            logging.error('Could no remove {} items from blacklist.'.format(
+            logging.error('Could not remove {} items from blacklist.'.format(
                 len(items))
             )
             return False
@@ -515,3 +554,84 @@ class DbClient(BaseDbClient):
         new_params.insert(0, hash)
 
         return self._new_alert_user_response(new_params)
+
+    def _delete_alert(self, params):
+        '''
+        DELETE FROM alerts WHERE hash = %s
+        '''
+        entries = self._select(
+            fields='*',
+            table='alerts',
+            where="hash = '{}'".format(params[0])
+        )
+        items, attribs = self._dict_to_items(entries)
+
+        if self._delete(
+            items=items,
+            attribs=attribs,
+            table='alerts'
+        ) is True:
+            logging.debug('Removed {} items from alerts.'.format(
+                len(items)
+                )
+            )
+            return True
+        else:
+            logging.error('Could not remove {} items from alerts.'.format(
+                len(items))
+            )
+            return False        
+
+    def _delete_alert_status(self, params):
+        '''
+        DELETE FROM alert_status WHERE hash = %s
+        '''
+        entries = self._select(
+            fields='*',
+            table='alert_status',
+            where="hash = '{}'".format(params[0])
+        )
+        items, attribs = self._dict_to_items(entries)
+
+        if self._delete(
+            items=items,
+            attribs=attribs,
+            table='alert_status'
+        ) is True:
+            logging.debug('Removed {} items from alert status.'.format(
+                len(items)
+                )
+            )
+            return True
+        else:
+            logging.error('Could not remove {} items from alert status.'.format(
+                len(items))
+            )
+            return False
+
+    def _delete_user_response(self, params):
+        '''
+        DELETE FROM user_responses WHERE hash = %s
+        '''
+        entries = self._select(
+            fields='*',
+            table='user_responses',
+            where="hash = '{}'".format(params[0])
+        )
+        items, attribs = self._dict_to_items(entries)
+
+        if self._delete(
+            items=items,
+            attribs=attribs,
+            table='user_responses'
+        ) is True:
+            logging.debug('Removed {} items from user responses.'.format(
+                len(items)
+                )
+            )
+            return True
+        else:
+            logging.error('Could not remove {} items from user responses.'.format(
+                len(items))
+            )
+            return False

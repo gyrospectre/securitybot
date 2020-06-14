@@ -79,6 +79,12 @@ report: >
 
     URL: {url}
 
+# Message sent to report a user didn't respond in time.
+report_noresponse: >
+    `{username}` did not respond when asked about `{title}` (`{description}`):
+
+    URL: {url}
+
 # Sent when a message is unrecognized
 bad_command: >
     I'm sorry, I don't understand. Try saying `help` for more information.

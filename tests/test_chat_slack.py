@@ -31,7 +31,7 @@ class TestChatProviderSlack(unittest.TestCase):
         ChatClient.connect = MagicMock()
         cli = ChatClient(connection_config=SLACK_CFG)
 
-        cli._slack_web.im_open.return_value = {'channel': {'id': '11'}}
+        cli._slack_web.conversations_open.return_value = {'channel': {'id': '11'}}
         cli.message_user(user={'id': 'test'}, message='what?')
 
         cli._slack_web.chat_postMessage.assert_called_once_with(
@@ -62,3 +62,13 @@ class TestChatProviderSlack(unittest.TestCase):
         u_result = cli.get_users()
 
         self.assertEqual(u_result, (users))
+
+    @patch('securitybot.chat.slack.RTMClient')
+    @patch('securitybot.chat.slack.WebClient')
+    def test__reporting_chan_invalid(self, mk_web, mk_rtm):
+        cli = ChatClient(connection_config=SLACK_CFG)
+
+        cli._slack_web.conversations_info.side_effect = Exception('boom!')
+
+        with self.assertRaises(ChatException):
+            cli._validate()

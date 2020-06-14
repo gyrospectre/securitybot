@@ -39,6 +39,7 @@ database:
   # How state will be maintained
   # Supported: MySQL (mysql), AWS SimpleDB (awssimpledb)
   provider: awssimpledb
+  tables: ['blacklist', 'alert_status', 'alerts', 'user_responses', 'ignored']
   mysql:
     host: 127.0.0.1
     db: securitybot
@@ -64,7 +65,7 @@ chat:
   provider: slack
   slack:
     username: 'CyberBot'
-    reporting_channel: 'Cxxxxxxxxxx'
+    reporting_channel: 'CXXXXXXXX'
     icon_url: 'https://dl.dropboxusercontent.com/s/t01pwfrqzbz3gzu/securitybot.png'
 
 user: 
@@ -75,6 +76,7 @@ user:
       password: changeme
       host: ldap.example.com
 
-debug:
-  level: 'debug'
+logging:
+  # Valid log levels: CRITICAL, ERROR, WARNING, INFO, DEBUG
+  level: DEBUG
 

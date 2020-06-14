@@ -20,18 +20,18 @@ blacklist_remove: >
     DELETE FROM blacklist WHERE ldap = %s
 
 new_alert_status: >
-    INSERT INTO alert_status (hash, status) VALUES (UNHEX(%s), %s)
+    INSERT INTO alert_status (hash, status) VALUES (%s, %s)
 
 new_alert_alerts: >
     INSERT INTO alerts (hash, ldap, title, description, reason, url, event_time)
-    VALUES (UNHEX(%s), %s, %s, %s, %s, %s, NOW())
+    VALUES (%s, %s, %s, %s, %s, %s, NOW())
 
 new_alert_user_response: >
     INSERT INTO user_responses (hash, comment, performed, authenticated)
-    VALUES (UNHEX(%s), '', false, false)
+    VALUES (%s, %s, %s, %s)
 
 get_alerts: >
-    SELECT HEX(alerts.hash),
+    SELECT alerts.hash,
        title,
        ldap,
        reason,
@@ -47,16 +47,71 @@ get_alerts: >
     JOIN alert_status ON alerts.hash = alert_status.hash
     WHERE status = %s
 
+delete_alert: >
+    DELETE FROM alerts WHERE hash = %s
+
+delete_alert_status: >
+    DELETE FROM alert_status WHERE hash = %s
+
+delete_user_response: >
+    DELETE FROM user_responses WHERE hash = %s
+
 set_status: >
     UPDATE alert_status
     SET status=%s
-    WHERE hash=UNHEX(%s)
+    WHERE hash=%s
 
 set_response: >
     UPDATE user_responses
     SET comment=%s,
         performed=%s,
         authenticated=%s
-    WHERE hash=UNHEX(%s)
+    WHERE hash=%s
 
+get_tables: >
+    SHOW tables
+
+create_table_blacklist: >
+    CREATE TABLE blacklist (
+        ldap VARCHAR(255) NOT NULL,
+        PRIMARY KEY ( ldap )
+    )
+
+create_table_ignored: >
+    CREATE TABLE ignored (
+        ldap VARCHAR(255) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        reason VARCHAR(255) NOT NULL,
+        until DATETIME NOT NULL,
+        CONSTRAINT ignored_ID PRIMARY KEY ( ldap, title )
+    )
+    
+create_table_alerts: >
+    CREATE TABLE alerts (
+        hash VARCHAR(64) NOT NULL,
+        ldap VARCHAR(255) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        description VARCHAR(255) NOT NULL,
+        reason TEXT NOT NULL,
+        url VARCHAR(511) NOT NULL,
+        event_time DATETIME NOT NULL,
+        PRIMARY KEY ( hash )
+    )
+
+create_table_alert_status: >
+    CREATE TABLE alert_status (
+        hash VARCHAR(64) NOT NULL,
+        status TINYINT UNSIGNED NOT NULL,
+        PRIMARY KEY ( hash )
+    )
+
+create_table_user_responses: >
+    CREATE TABLE user_responses(
+        hash VARCHAR(64) NOT NULL,
+        comment TEXT,
+        performed BOOL,
+        authenticated BOOL,
+        PRIMARY KEY ( hash )
+    )
+    
 ...

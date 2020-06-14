@@ -1,16 +1,22 @@
 # Securitybot
 ### Distributed alerting for the masses!
 A fork of the famous [Dropbox Security Bot][db-orig], which is no longer maintained and getting a bit long in the tooth! It's been given a fresh coat of paint,
-via [Antoine Cardon][algolia] who did some great work a few years ago with Python3 conversion and some extra cleanup. The project has moved to the new(er) Slack v2 SDK, which changed significantly from v1, and implemented much better management of secrets via Hashicorp Vault.
+via [Antoine Cardon][algolia] who did some great work a few years ago with Python3 conversion and some extra cleanup. 
 
 Securitybot is an open-source implementation of a distributed alerting chat bot, as described in Ryan Huber's [blog post][slack-blog].
 Distributed alerting improves the monitoring efficiency of your security team and can help you catch security incidents faster and more efficiently.
 
-The ultimate goal is a seamless install running in AWS in a Lambda, with all creds in Secrets Manager, and using Slack Event subscription
-rather than the old RTM API, but right now it's just a working codebase with some Vagrant lovliness to get a dev environment up and running easily.
-
-## Deploying
-This guide runs through setting up a Securitybot instance as quickly as possible with no frills.
+### What has changed?
+A lot!
+- Heaps of cleanup, making the project much more modular, which makes adding new chat/db/auth providers easier.
+- Slack: Moved to the new(er) Slack v2 SDK, which changed significantly from v1, and updated to use the Conversations API in readiness for deprecation of the
+  old functions in early 2021.
+- Secrets Management: Moved off hardcoded secrets, and added support for storing secrets in vault solutions. Initial support for Hashicorp Vault and AWS Secrets Manager.
+- Auth: Added support for Okta as an auth provider, building on [Chandler Newby][mew1033]'s initial work. Note that Duo is now broken, as I don't have access to a Duo
+  account to test and fix.
+- Database: Abstracted the database, and added support for AWS SimpleDB as a MySQL alternative. The database is now initialised by SecurityBot at runtime, if needed. This
+  makes initial setup quicker and easier.
+- Vagrant: (Mostly) automated setup of a dev environment using Vagrant. Again, focus on easy quickstart.
 
 ## Quick Start
 Install vagrant and virtualbox on your dev machine. Then, deploy the code into a VM:
@@ -19,45 +25,44 @@ git clone https://github.com/gyrospectre/securitybot.git
 cd securitybot
 vagrant up
 ```
-Vagrant will spin up an Ubuntu VM, install and configure MySQL, and install python deps. 
-
-Next, choose where you want to store your secrets. Yes, that's right, no more secrets in cleartext! We are security professionals after all!
-
-If you'd like to use AWS Secrets Manager, make sure you have created a specific IAM user with minimal perms (Permission group "SecretsManagerReadWrite"
-is all that is needed) and creds loaded into your dev environment. See [this AWS guide][awscreds] if you need a hand.
-
-If you'd like to use Hashicorp Vault instead, and don't have a test instance, you can spin up a local dev instance (in Docker) on your vagrant box
-using the helpful helping helper script:
+Vagrant will spin up an Ubuntu VM, install MySQL, and install python deps. Next, you need to setup your config.
+All config is handled by `config/bot.yaml`. Choose the providers you want to use and pop them into the config yaml.
 ```
 vagrant ssh
-cd /vagrant/vault
-source run.sh
-```
-Now, populate `config/bot.yaml` with your Slack reporting_channel (see Slack section below), secrets, chat and database providers, and optionally, 
-an MFA provider if you have one handy. If not, use the "nullauth" provider, which will just respond with a true response regardless of call and let
-you play around initially without too much effort. Then, run the init script to enter your secrets to be stored and used by SecurityBot.
-```
 cd /vagrant
 vi config/bot.yaml
-python3 init-secrets.py
-```
-Then, finally, you can run your bot!
-```
-python3 main.py
-```
-When done, you can ditch your vagrant dev box.
-```
-vagrant destroy
 ```
 
-### SQL
-Ew. Ewww. Keeping SQL for the time being but this will go soon. Please, please do not deploy this to prod as is. It uses the root user, 
-and has a stupid password. Not spending time hardening this, as again, it will go soon.
+### Auth
+An authentication provider is used to verify when a user says they performed an action. Since their account may have been compromised, and an attacker responding
+to the message, we'll use a MFA push to validate the response actually came from the user.
 
-### AWS SimpleDB
-A much better alternative to MySQL is AWS SDB, which is now supported. The provider acts as a SQL -> KV interpreter, so allows seamless switching between the database providers as needed.
+Choices are Okta, Duo (borked!), or NullAuth. The latter basically disables auth if you don't have Okta and want to play.
+- Okta : You'll need an API token. I used a read-only admin level token; you should be able to use a less powerful account but will have to play to work out 
+how low you can go in least privilege and still maintain SecurityBot functionality.
+You'll also need the `base_url` for your account, in the form of `https://XXXXXX.okta.com`
 
-### Slack
+- Duo : Broken, don't use. Would love someone with access to a Duo account to fix and cut a PR!
+
+- NullAuth : A dummy auth provider to test with if you don't have Okta or Duo. No provider specific config items are needed.
+
+Populate the `provider` key in the config `auth` section with your choice. Also add any specific config required for the provider.
+
+### Database
+The database provider is used to maintain alert state, a minimise loss of alerts in the event of a bot restart.
+
+Choices are MySQL or AWS SimpleDB. 
+- MySQL : You'll need a server IP, username and password that you'd like to use. If you don't have a SQL server handy, Vagrant has setup a local SQL server that you can use. 
+The account used needs to have access to create the securitybot database, and create/modify all tables. You could manually create the database yourself, in which case the database
+account would just need the create/modify all tables permissions.
+
+- SimpleDB : In AWS, create a specific IAM user with minimal perms (`"Action": ["sdb:*"]`), then add the keys to your dev host (the vagrant machine), under `~/.aws/credentials`. Standard AWS CLI stuff, see [this AWS guide][awscreds] if you need a hand.
+
+Populate the `provider` key in the config `database` section with your choice. As with auth, add any specific config required for your chosen database provider.
+
+### Chat
+Chat is how we will interact with our users. The only choice right now is Slack. I've generally tried to imlement two choices for all providers, but Slack is pretty ubiquitous so should (hopefully) do for now. Will look at adding Mattermost in the future, or maybe Microsoft Teams?
+
 You'll need a token to be able to integrate with Slack.
 The best thing to do would be to [create a new Slack app][bot-user] and use that token for Securitybot. You'll need a "Classic App" for the time
 being until I can update the bot to not use the RTM API, so use [this link][create-classic-app] to create your app. Give the app a name, like `Security Bot`
@@ -72,19 +77,38 @@ You'll now have a "Bot User OAuth Access Token" that you can configure in `confi
 You'll also want to set up a channel to which the bot will report when users specify that they haven't performed an action.
 Find the unique ID for that channel (it'll look similar to `C123456`), and pop that in `config/bot.yaml` too, as the `reporting_channel` key.
 
-### Duo
-For Duo, you'll want to create an [Auth API][auth-api] instance, name it something clever, and keep track of the integration key, secret key, and auth API endpoint URI, adding to the config yaml as required.
-Caveat: I don't use Duo, so have not tested this functionality and it may well be broken. Feel free to fix and PR!
-
-### Okta
-Okta support has been added, building on [Chandler Newby][mew1033]'s initial work. You'll need a API token from the Okta
-console, and add it and the base url (in the form https://{org name}.okta.com) to `config/bot.yaml`.
-
 ### Secrets Management
-Friends don't let friends store clear-text passwords in code! The base setup now stores all secrets in either Hashicorp Vault or AWS Secrets Manager instead of 
-the config files, as it did in the original SecurityBot. If you want to update your secrets after initial install, you can use the handy helper script
-in `init-secrets.py`.
- 
+Friends don't let friends store clear-text passwords in code! The SM provider stores your secrets/passwords secrely. The secrets are loaded from the backend
+using the structure of the secrets stanza in the config, and mapped into the rest of the config at run time. Secrets are not written to disk, but are in memory for the life of the 
+Security Bot instance.
+
+Choices for secrets management are Hashicorp Vault or AWS Secrets Manager.
+
+- Secrets Manager : In AWS, create a specific IAM user with minimal perms (permission group "SecretsManagerReadWrite"
+is all that is needed) and load the creds into your dev environment. See [this AWS guide][awscreds] if you need a hand. If you decided to use SimpleDB for your 
+database and followed the setup above, you just need to add the permission group to the IAM user you created/configured there. No provider specific config items are needed
+for Secrets Manager. 
+
+- Vault : You'll need your Vault URL, and a token in an environment variable of your Vagrant instance, populating the values in the relevant config section. If you don't have a Vault test server handy you can spin up a local dev instance (in Docker) on your vagrant box using the helpful helping helper script, and using `'VAULT_TOKEN_ID'` for the `token_env` and `'http://127.0.0.1:8200'` for the `url`.
+```
+cd /vagrant/vault
+source run.sh
+```
+Populate the `provider` key in the config `secretsmgmt` section with your choice. Now, initialise your secrets.
+```
+cd /vagrant/
+python3 -m securitybot.utils.initSecrets
+```
+You'll be prompted for any passwords and other secrets required for your chosen providers.Then, finally, you can run your bot!
+```
+cd /vagrant/
+python3 main.py
+```
+When done, you can ditch your vagrant dev box.
+```
+vagrant destroy
+```
+
 ### Running the bot
 Take a look at the provided `main.py` in the root directory for an example on how to use all of these.
 If the following were all generated successfully, Securitybot should be up and running.
@@ -110,28 +134,8 @@ The bot handles incoming messages as commands.
 Command parsing and handling is done in the `Securitybot` class and the commands themselves are provided in two places.
 The functions for the commands are defined in `commands.py` and their structure is defined in `commands.yaml` under the `config/` directory.
 
-### Messaging
-Securitybot is designed to be compatible with a wide variety of messaging systems.
-We currently provide bindings for Slack, but feel free to contribute any other plugins, like for Gitter or Zulip, upstream.
-Messaging is made possible by `securitybot/chat/chat.py` which provides a small number of functions for querying users in a messaging group, messaging those users, and sending messages to a specific channel/room.
-To add bindings for a new messaging system, subclass `Chat`.
-
-### Secrets
-In the main `bot.yaml` config file, any secrets are defined in the `secretsmgmt` section, as well as defining which provider to use. The secrets are loaded from the backend
-using the structure of the secrets stanza, and mapped into the rest of the config at run time. Secrets are not written to disk, but are in memory for the life of the 
-Security Bot instance.
-
-### 2FA
-2FA support is provided by `auth/auth.py`, which wraps async 2FA in a few functions that enable checking for 2FA capability, starting a 2FA session, and polling the state of the 2FA session.
-We provide support for Duo Push via the Duo Auth API, and Okta Push, but adding support for a different product or some in-house 2FA solution is as easy as creating a subclass of `Auth`.
-
-### Task management
-Task management is provided by `tasker/tasker.py` and the `Tasker` class.
-Since alerts are logged in an SQL database, the provided Tasker is `SQLTasker`.
-This provides support for grabbing new tasks and updating them via individual `Task` objects.
-
 ### Blacklists
-Blacklists are handled by the SQL database, provided in `blacklist/blacklist.py` and the subclass `blacklist/sql_blacklist.py`.
+Blacklists are handled by the SQL database, provided in `blacklist/blacklist.py`.
 
 ### Users
 The `User` object provides support for handling user state.
@@ -139,20 +143,14 @@ We keep track of whatever information a messaging system gives to us, but really
 
 ### Alerts
 Alerts are uniquely identified by a SHA-256 hash which comes from some hash of the event that generated them.
-We assume that a SHA-256 hash is sufficiently random for there to be no collisions.
-If you encounter a SHA-256 collision, please contact someone at your nearest University and enjoy the fame and fortune it brings upon you.
 
 ## FAQ
-
 No I will not add support for your chat/auth/database! You are free to add yourself and contribute back to the community though!
 
 ## Contributing
 Contributors must abide by the [Dropbox Contributor License Agreement][cla].
 
 ## License
-
-Copyright 2016 Dropbox, Inc.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at

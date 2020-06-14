@@ -52,6 +52,26 @@ class ChatClient(BaseChatClient):
             raise ChatException('Unable to connect to Slack API.')
         logging.info('Connection to Slack API successful!')
 
+        logging.debug('Checking reporting channel is valid')
+        try:
+            response = self._slack_web.conversations_info(
+                channel=self.reporting_channel,
+            )
+            logging.info(
+                "Using channel '{}' ({}) for notifications.".format(
+                    response['channel']['name'],
+                    response['channel']['id']
+                )
+            )
+
+        except Exception as error:
+            raise ChatException(
+                'Configured reporting channel {} invalid.\n'
+                '{}'.format(
+                    error, self.reporting_channel
+                )
+            )
+
     def connect(self, loop):
         asyncio.set_event_loop(loop)
         ssl_context = ssl_lib.create_default_context(cafile=certifi.where())

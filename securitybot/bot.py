@@ -160,7 +160,8 @@ class SecurityBot(object):
 
         self._dbclient = loader.build_db_client(
             db_provider=db_provider,
-            connection_config=self._config['database'][db_provider]
+            connection_config=self._config['database'][db_provider],
+            tables=self._config['database']['tables']
         )
         self._authclient = loader.build_auth_client(
             auth_provider=auth_provider,
@@ -344,6 +345,8 @@ class SecurityBot(object):
         '''
         logging.debug('Removing {} from active users'.format(user['name']))
         self.active_users.pop(user['id'], None)
+        logging.debug('Current active users: {}'.format(self.active_users))
+
 
     def alert_user(self, user, task):
         '''
