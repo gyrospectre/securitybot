@@ -38,7 +38,7 @@ secretsmgmt:
 database:
   # How state will be maintained
   # Supported: MySQL (mysql), AWS SimpleDB (awssimpledb)
-  provider: mysql
+  provider: awssimpledb
   tables: ['blacklist', 'alert_status', 'alerts', 'user_responses', 'ignored']
   mysql:
     host: 127.0.0.1
@@ -65,7 +65,7 @@ chat:
   provider: slack
   slack:
     username: 'CyberBot'
-    reporting_channel: 'Cxxx'
+    reporting_channel: 'CXXXXXXXX'
     icon_url: 'https://dl.dropboxusercontent.com/s/t01pwfrqzbz3gzu/securitybot.png'
 
 user: 

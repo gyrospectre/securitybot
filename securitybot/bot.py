@@ -345,6 +345,8 @@ class SecurityBot(object):
         '''
         logging.debug('Removing {} from active users'.format(user['name']))
         self.active_users.pop(user['id'], None)
+        logging.debug('Current active users: {}'.format(self.active_users))
+
 
     def alert_user(self, user, task):
         '''

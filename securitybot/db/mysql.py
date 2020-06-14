@@ -101,6 +101,7 @@ class DbClient(BaseDbClient):
             params = ()
         try:
             logging.debug('Executing: ' + query + str(params))
+            print(query, params)
             self._cursor.execute(query, params)
             rows = self._cursor.fetchall()
             self._conn.commit()
@@ -169,6 +170,18 @@ class DbClient(BaseDbClient):
             return False, e
         
         return True, rows
+
+    def dump_table(self, table):
+        '''
+        Dumps a table
+        '''
+        try:
+            self._cursor.execute('SELECT * FROM {}'.format(table))
+            rows = self._cursor.fetchall()
+            self._conn.commit()
+            return rows
+        except OperationalError as error:
+            logging.debug('Table {} already exists'.format(table))
 
 
 class SQLEngineException(DbException):

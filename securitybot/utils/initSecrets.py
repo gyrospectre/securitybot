@@ -36,7 +36,7 @@ def main():
                 )
             )
         else:
-            print("Client not found!")
+            print("No secrets found to store for client {}".format(client))
 
     print('Finished.')
 

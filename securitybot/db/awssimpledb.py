@@ -82,6 +82,16 @@ class DbClient(BaseDbClient):
         
         return True, 'ok'
 
+    def dump_table(self, table):
+        '''
+        Dumps a table (domain in SDB)
+        '''
+        rows = self._select(
+            fields='*',
+            table=table
+        )
+        return rows
+
     #
     # Conversion Helper Functions
     #
@@ -371,7 +381,7 @@ class DbClient(BaseDbClient):
             )
             return True
         else:
-            logging.error('Could no remove {} items from blacklist.'.format(
+            logging.error('Could not remove {} items from blacklist.'.format(
                 len(items))
             )
             return False
@@ -544,3 +554,84 @@ class DbClient(BaseDbClient):
         new_params.insert(0, hash)
 
         return self._new_alert_user_response(new_params)
+
+    def _delete_alert(self, params):
+        '''
+        DELETE FROM alerts WHERE hash = %s
+        '''
+        entries = self._select(
+            fields='*',
+            table='alerts',
+            where="hash = '{}'".format(params[0])
+        )
+        items, attribs = self._dict_to_items(entries)
+
+        if self._delete(
+            items=items,
+            attribs=attribs,
+            table='alerts'
+        ) is True:
+            logging.debug('Removed {} items from alerts.'.format(
+                len(items)
+                )
+            )
+            return True
+        else:
+            logging.error('Could not remove {} items from alerts.'.format(
+                len(items))
+            )
+            return False        
+
+    def _delete_alert_status(self, params):
+        '''
+        DELETE FROM alert_status WHERE hash = %s
+        '''
+        entries = self._select(
+            fields='*',
+            table='alert_status',
+            where="hash = '{}'".format(params[0])
+        )
+        items, attribs = self._dict_to_items(entries)
+
+        if self._delete(
+            items=items,
+            attribs=attribs,
+            table='alert_status'
+        ) is True:
+            logging.debug('Removed {} items from alert status.'.format(
+                len(items)
+                )
+            )
+            return True
+        else:
+            logging.error('Could not remove {} items from alert status.'.format(
+                len(items))
+            )
+            return False
+
+    def _delete_user_response(self, params):
+        '''
+        DELETE FROM user_responses WHERE hash = %s
+        '''
+        entries = self._select(
+            fields='*',
+            table='user_responses',
+            where="hash = '{}'".format(params[0])
+        )
+        items, attribs = self._dict_to_items(entries)
+
+        if self._delete(
+            items=items,
+            attribs=attribs,
+            table='user_responses'
+        ) is True:
+            logging.debug('Removed {} items from user responses.'.format(
+                len(items)
+                )
+            )
+            return True
+        else:
+            logging.error('Could not remove {} items from user responses.'.format(
+                len(items))
+            )
+            return False
